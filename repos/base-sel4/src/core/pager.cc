@@ -36,8 +36,8 @@ struct Fault_info
 	Fault_info(seL4_MessageInfo_t msg_info)
 	:
 		ip(seL4_GetMR(0)),
-		pf(seL4_GetMR(1)),
-		write(seL4_Fault_isWriteFault(seL4_GetMR(3)))
+		pf(seL4_GetMR(1)) //TODO ,
+		// TODO write(seL4_Fault_isWriteFault(seL4_GetMR(3)))
 	{ }
 };
 

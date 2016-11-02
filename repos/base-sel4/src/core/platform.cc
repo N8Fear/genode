@@ -100,7 +100,7 @@ void Platform::_init_unused_phys_alloc()
 
 static inline void init_sel4_ipc_buffer()
 {
-	asm volatile ("movl %0, %%gs" :: "r"(IPCBUF_GDT_SELECTOR) : "memory");
+// TODO	asm volatile ("movl %0, %%gs" :: "r"(IPCBUF_GDT_SELECTOR) : "memory");
 }
 
 

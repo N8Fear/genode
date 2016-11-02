@@ -120,9 +120,9 @@ void Genode::start_sel4_thread(Cap_sel tcb_sel, addr_t ip, addr_t sp)
 	Genode::memset(&regs, 0, sizeof(regs));
 	size_t const num_regs = sizeof(regs)/sizeof(seL4_Word);
 
-	regs.eip = ip;
-	regs.esp = sp;
-	regs.gs  = IPCBUF_GDT_SELECTOR;
+	regs.pc = ip;
+	regs.sp = sp;
+	//regs.cpsr  = IPCBUF_GDT_SELECTOR;
 
 	int const ret = seL4_TCB_WriteRegisters(tcb_sel.value(), false, 0, num_regs, &regs);
 	ASSERT(ret == 0);

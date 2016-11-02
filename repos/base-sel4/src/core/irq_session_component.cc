@@ -53,8 +53,8 @@ bool Irq_object::associate(Irq_session::Trigger const irq_trigger,
 	seL4_Word ioapic   = 0;
 	seL4_Word pin      = _irq ? _irq : 2;
 	seL4_Word vector   = _irq;
-	int res = seL4_IRQControl_GetIOAPIC(seL4_CapIRQControl, root, index, depth,
-	                                    ioapic, pin, level, polarity, vector);
+	int res = 0; // TODO seL4_IRQControl_GetIOAPIC(seL4_CapIRQControl, root, index, depth,
+	             //                       ioapic, pin, level, polarity, vector);
 	if (res != seL4_NoError)
 		return false;
 
