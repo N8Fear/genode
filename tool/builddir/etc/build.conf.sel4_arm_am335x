@@ -1,0 +1,5 @@
+REPOSITORIES  = $(GENODE_DIR)/repos/base-sel4
+
+##
+## Kernel-specific run tool configuration
+##
