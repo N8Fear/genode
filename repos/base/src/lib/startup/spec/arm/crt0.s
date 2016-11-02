@@ -27,6 +27,7 @@
 
 	/* make initial value of some registers available to higher-level code */
 	ldr r4, =__initial_sp
+	ldr r0, =__initial_r0
 	str sp, [r4]
 
 	/*
@@ -63,4 +64,7 @@
 	/* initial value of the SP register */
 	.global __initial_sp
 	__initial_sp:
+	.space 4
+	.global __initial_r0
+	__initial_r0:
 	.space 4
