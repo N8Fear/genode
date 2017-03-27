@@ -12,7 +12,7 @@ PLATFORM = $(MAKECMDGOALS)
 
 PLATFORMS = x86_32  x86_64  panda  pbxa9  rpi arndale imx53_qsb imx53_qsb_tz \
             usb_armory wand_quad odroid_xu odroid_x2 zynq_qemu muen \
-            riscv_spike linux
+            riscv_spike linux wega_am335x
 
 PLATFORMS_DEPR = linux_x86 linux_arm fiasco_x86 okl4_x86 pistachio_x86 \
                  nova_x86_32 nova_x86_64 hw_x86_64 foc_x86_32 foc_x86_64 \
@@ -179,6 +179,7 @@ BUILD_CONF(hw_zynq)         := ${BUILD_CONF(zynq_qemu)}
 BUILD_CONF(hw_x86_64_muen)  := ${BUILD_CONF(muen)}
 BUILD_CONF(hw_riscv)        := ${BUILD_CONF(riscv_spike)}
 BUILD_CONF(foc_odroid_x2)   := ${BUILD_CONF(odroid_x2)}
+BUILD_CONF(hw_wega_am335x)  := ${BUILD_CONF(wega_am335x)}
 
 message: $(BUILD_DIR)/etc/build.conf
 $(BUILD_DIR)/etc/build.conf:
@@ -231,6 +232,7 @@ SPECS(zynq_qemu)    := zynq_qemu
 SPECS(muen)         := muen x86_64
 SPECS(riscv_spike)  := riscv
 SPECS(linux)        := $(HOST_SPEC_ARCH)
+SPECS(wega_am335x)  := wega_am335x
 
 # deprecated platforms
 SPECS(linux_x86)       := $(HOST_SPEC_ARCH)
