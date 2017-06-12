@@ -191,7 +191,7 @@ class Genode::Vm_space
 				seL4_X86_Page          const service = _idx_to_sel(pte_idx);
 				seL4_X86_PageDirectory const pd      = _pd_sel.value();
 				seL4_Word              const vaddr   = to_virt;
-				seL4_CapRights         const rights  = seL4_AllRights;
+				seL4_CapRights_t       const rights  = seL4_AllRights;
 				seL4_X86_VMAttributes  const attr    = seL4_X86_Default_VMAttributes;
 
 				int const ret = seL4_X86_Page_Map(service, pd, vaddr, rights, attr);
@@ -209,6 +209,11 @@ class Genode::Vm_space
 		{
 			/* delete copy of the mapping's page-frame selector */
 			_page_table_registry.apply(virt, [&] (unsigned idx) {
+
+				seL4_X86_Page const service = _idx_to_sel(idx);
+				long err = seL4_X86_Page_Unmap(service);
+				if (err)
+					error("unmap ", Hex(virt), " failed, idx=", idx, " res=", err);
 
 			 	_leaf_cnode(idx).remove(_leaf_cnode_entry(idx));
 
@@ -364,15 +369,8 @@ class Genode::Vm_space
 				if (_map_page(from_phys + offset, to_virt + offset, flush_support))
 					continue;
 
-				/* XXX - Why this quirk is necessary - shouldn't happen ?!? */
-
-				error("mapping failed - retry once ", Hex(from_phys + offset),
+				error("mapping failed ", Hex(from_phys + offset),
 				      " -> ", Hex(to_virt + offset));
-
-				_page_table_registry.forget_page_table_entry(to_virt + offset);
-				_alloc_and_map_page_table(to_virt + offset, !flush_support);
-
-				_map_page(from_phys + offset, to_virt + offset, flush_support);
 			}
 		}
 

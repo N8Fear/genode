@@ -85,6 +85,7 @@ void Genode::Thread_info::init(addr_t const utcb_virt_addr)
 
 	/* set scheduling priority */
 	enum { PRIORITY_MAX = 0xff };
+	seL4_TCB_SetMCPriority(tcb_sel.value(), PRIORITY_MAX);
 	seL4_TCB_SetPriority(tcb_sel.value(), PRIORITY_MAX);
 }
 
@@ -122,7 +123,7 @@ void Genode::start_sel4_thread(Cap_sel tcb_sel, addr_t ip, addr_t sp)
 
 	regs.eip = ip;
 	regs.esp = sp;
-	regs.gs  = IPCBUF_GDT_SELECTOR;
+	regs.fs  = IPCBUF_GDT_SELECTOR;
 
 	int const ret = seL4_TCB_WriteRegisters(tcb_sel.value(), false, 0, num_regs, &regs);
 	ASSERT(ret == 0);
