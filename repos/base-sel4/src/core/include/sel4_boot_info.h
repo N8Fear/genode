@@ -22,7 +22,7 @@
 
 
 /* provided by the assembly startup code */
-extern Genode::addr_t __initial_bx;
+extern Genode::addr_t __initial_r0;
 
 
 namespace Genode {
@@ -32,7 +32,7 @@ namespace Genode {
 	 */
 	static inline seL4_BootInfo const &sel4_boot_info()
 	{
-		return *(seL4_BootInfo const *)__initial_bx;
+		return *(seL4_BootInfo const *)__initial_r0;
 	}
 }
 

@@ -5,10 +5,10 @@
  */
 
 /*
- * Copyright (C) 2015-2017 Genode Labs GmbH
+ * Copyright (C) 2015 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
- * under the terms of the GNU Affero General Public License version 3.
+ * under the terms of the GNU General Public License version 2.
  */
 
 #ifndef _CORE__INCLUDE__VM_SPACE_H_
@@ -188,16 +188,16 @@ class Genode::Vm_space
 			 * Insert copy of page-frame selector into page table
 			 */
 			{
-				seL4_X86_Page          const service = _idx_to_sel(pte_idx);
-				seL4_X86_PageDirectory const pd      = _pd_sel.value();
+				seL4_ARM_Page          const service = _idx_to_sel(pte_idx);
+				seL4_ARM_PageDirectory const pd      = _pd_sel.value();
 				seL4_Word              const vaddr   = to_virt;
-				seL4_CapRights_t       const rights  = seL4_AllRights;
-				seL4_X86_VMAttributes  const attr    = seL4_X86_Default_VMAttributes;
+				seL4_CapRights         const rights  = seL4_AllRights;
+				seL4_ARM_VMAttributes  const attr    = seL4_ARM_Default_VMAttributes;
 
-				int const ret = seL4_X86_Page_Map(service, pd, vaddr, rights, attr);
+				int const ret = seL4_ARM_Page_Map(service, pd, vaddr, rights, attr);
 
 				if (ret != seL4_NoError) {
-					error("seL4_X86_Page_Map to ", Hex(from_phys), "->",
+					error("seL4_ARM_Page_Map to ", Hex(from_phys), "->",
 					      Hex(to_virt), " returned ", ret);
 					return false;
 				}
@@ -226,14 +226,14 @@ class Genode::Vm_space
 
 		void _map_page_table(Cap_sel pt_sel, addr_t to_virt)
 		{
-			seL4_X86_PageTable     const service = pt_sel.value();
-			seL4_X86_PageDirectory const pd      = _pd_sel.value();
+			seL4_ARM_PageTable     const service = pt_sel.value();
+			seL4_ARM_PageDirectory const pd      = _pd_sel.value();
 			seL4_Word              const vaddr   = to_virt;
-			seL4_X86_VMAttributes  const attr    = seL4_X86_Default_VMAttributes;
+			seL4_ARM_VMAttributes  const attr    = seL4_ARM_Default_VMAttributes;
 
-			int const ret = seL4_X86_PageTable_Map(service, pd, vaddr, attr);
+			int const ret = seL4_ARM_PageTable_Map(service, pd, vaddr, attr);
 			if (ret != seL4_NoError)
-				error("seL4_X86_PageTable_Map returned ", ret);
+				error("seL4_ARM_PageTable_Map returned ", ret);
 		}
 
 		class Alloc_page_table_failed : Exception { };

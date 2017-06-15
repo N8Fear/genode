@@ -5,10 +5,10 @@
  */
 
 /*
- * Copyright (C) 2015-2017 Genode Labs GmbH
+ * Copyright (C) 2015 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
- * under the terms of the GNU Affero General Public License version 3.
+ * under the terms of the GNU General Public License version 2.
  */
 
 /* Genode includes */
@@ -21,12 +21,15 @@
 
 #include <sel4/sel4.h>
 
+#include <base/internal/kernel_debugger.h>
+
 using namespace Genode;
 
 
 bool Irq_object::associate(Irq_session::Trigger const irq_trigger,
                            Irq_session::Polarity const irq_polarity)
 {
+	kernel_debugger_outstring("irq_session_component.cc: associate\n\n\n");
 	/* allocate notification object within core's CNode */
 	Platform &platform = *platform_specific();
 	Range_allocator &phys_alloc = *platform.ram_alloc();
@@ -40,24 +43,24 @@ bool Irq_object::associate(Irq_session::Trigger const irq_trigger,
 	enum { IRQ_EDGE = 0, IRQ_LEVEL = 1 };
 	enum { IRQ_HIGH = 0, IRQ_LOW = 1 };
 
-	seL4_Word level    = (_irq < 16) ? IRQ_EDGE : IRQ_LEVEL;
-	seL4_Word polarity = (_irq < 16) ? IRQ_HIGH : IRQ_LOW;
+	//TODO seL4_Word level    = (_irq < 16) ? IRQ_EDGE : IRQ_LEVEL;
+	//TODO seL4_Word polarity = (_irq < 16) ? IRQ_HIGH : IRQ_LOW;
 
-	if (irq_trigger != Irq_session::TRIGGER_UNCHANGED)
-		level = (irq_trigger == Irq_session::TRIGGER_LEVEL) ? IRQ_LEVEL : IRQ_EDGE;
+	//TODO if (irq_trigger != Irq_session::TRIGGER_UNCHANGED)
+	//TODO 	level = (irq_trigger == Irq_session::TRIGGER_LEVEL) ? IRQ_LEVEL : IRQ_EDGE;
 
-	if (irq_polarity != Irq_session::POLARITY_UNCHANGED)
-		polarity = (irq_polarity == Irq_session::POLARITY_HIGH) ? IRQ_HIGH : IRQ_LOW;
+	//TODO if (irq_polarity != Irq_session::POLARITY_UNCHANGED)
+	//TODO 	polarity = (irq_polarity == Irq_session::POLARITY_HIGH) ? IRQ_HIGH : IRQ_LOW;
 
-	/* setup irq */
-	seL4_CNode root    = seL4_CapInitThreadCNode;
-	seL4_Word index    = _kernel_irq_sel.value();
-	seL4_Uint8 depth   = 32;
-	seL4_Word ioapic   = 0;
-	seL4_Word pin      = _irq ? _irq : 2;
-	seL4_Word vector   = _irq;
-	int res = seL4_IRQControl_GetIOAPIC(seL4_CapIRQControl, root, index, depth,
-	                                    ioapic, pin, level, polarity, vector);
+	//TODO /* setup irq */
+	//TODO seL4_CNode root    = seL4_CapInitThreadCNode;
+	//TODO seL4_Word index    = _kernel_irq_sel.value();
+	//TODO seL4_Uint8 depth   = 32;
+	//TODO seL4_Word ioapic   = 0;
+	//TODO seL4_Word pin      = _irq ? _irq : 2;
+	//TODO seL4_Word vector   = _irq;
+	int res = 77; // TODO seL4_IRQControl_GetIOAPIC(seL4_CapIRQControl, root, index, depth,
+	             //                       ioapic, pin, level, polarity, vector);
 	if (res != seL4_NoError)
 		return false;
 
@@ -66,6 +69,7 @@ bool Irq_object::associate(Irq_session::Trigger const irq_trigger,
 
 	res = seL4_IRQHandler_SetNotification(irq_handler, notification);
 
+	kernel_debugger_outstring("irq_session_component.cc: associate, before return\n\n\n");
 	return (res == seL4_NoError);
 }
 

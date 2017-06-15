@@ -5,10 +5,10 @@
  */
 
 /*
- * Copyright (C) 2015-2017 Genode Labs GmbH
+ * Copyright (C) 2015 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
- * under the terms of the GNU Affero General Public License version 3.
+ * under the terms of the GNU General Public License version 2.
  */
 
 /* Genode includes */
@@ -26,6 +26,8 @@
 /* base-internal includes */
 #include <base/internal/globals.h>
 #include <base/internal/stack_area.h>
+
+#include <base/internal/kernel_debugger.h>
 
 using namespace Genode;
 
@@ -73,6 +75,9 @@ bool Mapped_mem_allocator::_unmap_local(addr_t virt_addr, addr_t phys_addr,
 
 void Platform::_init_unused_phys_alloc()
 {
+	/* enable log support early */
+	init_log();
+
 	/* the lower physical ram is kept by the kernel and not usable to us */
 	_unused_phys_alloc.add_range(0x100000, 0UL - 0x100000);
 }
@@ -80,12 +85,14 @@ void Platform::_init_unused_phys_alloc()
 
 static inline void init_sel4_ipc_buffer()
 {
-	asm volatile ("movl %0, %%fs" :: "r"(IPCBUF_GDT_SELECTOR) : "memory");
+  kernel_debugger_outstring("init_sel4_ipc_buffer: not implemented\n\n\n");
+// TODO	asm volatile ("movl %0, %%fs" :: "r"(IPCBUF_GDT_SELECTOR) : "memory");
 }
 
 
 void Platform::_init_allocators()
 {
+  kernel_debugger_outstring("init_allocator: begin\n\n\n");
 	/* interrupt allocator */
 	_irq_alloc.add_range(0, 256);
 
@@ -151,6 +158,7 @@ void Platform::_init_allocators()
 	/* preserve stack area in core's virtual address space */
 	_core_mem_alloc.virt_alloc()->remove_range(stack_area_virtual_base(),
 	                                           stack_area_virtual_size());
+<<<<<<< HEAD
 	if (verbose_boot_info) {
 		typedef Hex_range<addr_t> Hex_range;
 		log("virtual adress layout of core:");
@@ -162,11 +170,15 @@ void Platform::_init_allocators()
 		log(" stack area ", Hex_range(stack_area_virtual_base(),
 		                              stack_area_virtual_size()));
 	}
+=======
+  kernel_debugger_outstring("init_allocator: end\n\n\n");
+>>>>>>> hardcode arm stuff
 }
 
 
 void Platform::_switch_to_core_cspace()
 {
+  kernel_debugger_outstring("switch_to_core_cspace: begin\n\n\n");
 	Cnode_base const initial_cspace(Cap_sel(seL4_CapInitThreadCNode), 32);
 
 	/* copy initial selectors to core's CNode */
@@ -257,6 +269,7 @@ void Platform::_switch_to_core_cspace()
 		if (ret != seL4_NoError)
 			error(__FUNCTION__, ": seL4_TCB_SetSpace returned ", ret);
 	}
+  kernel_debugger_outstring("switch_to_core_cspace: end\n\n\n");
 }
 
 
@@ -268,6 +281,7 @@ Cap_sel Platform::_init_asid_pool()
 
 void Platform::_init_core_page_table_registry()
 {
+  kernel_debugger_outstring("_init_core_page_table_registry: begin\n\n\n");
 	seL4_BootInfo const &bi = sel4_boot_info();
 
 	addr_t const modules_start = reinterpret_cast<addr_t>(&_boot_modules_binaries_begin);
@@ -298,6 +312,7 @@ void Platform::_init_core_page_table_registry()
 
 		_core_page_table_registry.insert_page_table_entry(virt_addr, sel);
 	}
+  kernel_debugger_outstring("_init_core_page_table_registry: end\n\n\n");
 }
 
 
@@ -404,6 +419,7 @@ Platform::Platform()
 	               _core_page_table_registry,
 	               "core")
 {
+  kernel_debugger_outstring("In Platform()\n\n\n");
 	/* create notification object for Genode::Lock used by this first thread */
 	Cap_sel lock_sel (INITIAL_SEL_LOCK);
 	Cap_sel core_sel = _core_sel_alloc.alloc();
@@ -420,6 +436,7 @@ Platform::Platform()
 	seL4_Signal(lock_sel.value());
 	seL4_Wait(lock_sel.value(), &sender);
 
+  kernel_debugger_outstring("In Platform(): before ASSERT\n\n");
 	ASSERT(sender == INITIAL_SEL_LOCK);
 
 	/* I/O port allocator (only meaningful for x86) */
@@ -441,11 +458,13 @@ Platform::Platform()
 
 unsigned Platform::alloc_core_rcv_sel()
 {
+  kernel_debugger_outstring("In alloc_core_rcv_sel(): begin\n\n");
 	Cap_sel rcv_sel = _core_sel_alloc.alloc();
 
 	seL4_SetCapReceivePath(_core_cnode.sel().value(), rcv_sel.value(),
 	                       _core_cnode.size_log2());
 
+  kernel_debugger_outstring("In alloc_core_rcv_sel(): before return\n\n");
 	return rcv_sel.value();
 }
 

@@ -8,10 +8,10 @@
  */
 
 /*
- * Copyright (C) 2015-2017 Genode Labs GmbH
+ * Copyright (C) 2015 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
- * under the terms of the GNU Affero General Public License version 3.
+ * under the terms of the GNU General Public License version 2.
  */
 
 #ifndef _CORE__INCLUDE__THREAD_SEL4_H_
@@ -132,7 +132,8 @@ void Genode::start_sel4_thread(Cap_sel tcb_sel, addr_t ip, addr_t sp)
 
 	regs.eip = ip;
 	regs.esp = sp;
-	regs.fs  = IPCBUF_GDT_SELECTOR;
+	//TODO regs.fs  = IPCBUF_GDT_SELECTOR;
+	// was cspr in old try (hvb)
 
 	int const ret = seL4_TCB_WriteRegisters(tcb_sel.value(), false, 0, num_regs, &regs);
 	ASSERT(ret == 0);

@@ -5,10 +5,10 @@
  */
 
 /*
- * Copyright (C) 2015-2017 Genode Labs GmbH
+ * Copyright (C) 2015 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
- * under the terms of the GNU Affero General Public License version 3.
+ * under the terms of the GNU General Public License version 2.
  */
 
 /* Genode includes */
@@ -22,6 +22,8 @@
 /* base-internal includes */
 #include <base/internal/capability_space_sel4.h>
 #include <base/internal/native_utcb.h>
+
+#include <base/internal/kernel_debugger.h>
 
 using namespace Genode;
 
@@ -41,18 +43,21 @@ class Platform_thread_registry : Noncopyable
 
 		void insert(Platform_thread &thread)
 		{
+			kernel_debugger_outstring("platform_thread.cc: in Ptr: insert()\n\n\n");
 			Lock::Guard guard(_lock);
 			_threads.insert(&thread);
 		}
 
 		void remove(Platform_thread &thread)
 		{
+			kernel_debugger_outstring("platform_thread.cc: in Ptr: remove()\n\n\n");
 			Lock::Guard guard(_lock);
 			_threads.remove(&thread);
 		}
 
 		void install_mapping(Mapping const &mapping, unsigned long pager_object_badge)
 		{
+			kernel_debugger_outstring("platform_thread.cc: in Ptr: install_mapping()\n\n\n");
 			Lock::Guard guard(_lock);
 
 			for (Platform_thread *t = _threads.first(); t; t = t->next()) {
@@ -65,6 +70,7 @@ class Platform_thread_registry : Noncopyable
 
 Platform_thread_registry &platform_thread_registry()
 {
+	kernel_debugger_outstring("platform_thread.cc: in Platform_thread_registry()\n\n\n");
 	static Platform_thread_registry inst;
 	return inst;
 }
@@ -72,6 +78,7 @@ Platform_thread_registry &platform_thread_registry()
 
 void Genode::install_mapping(Mapping const &mapping, unsigned long pager_object_badge)
 {
+	kernel_debugger_outstring("platform_thread.cc: in install_mapping()\n\n\n");
 	platform_thread_registry().install_mapping(mapping, pager_object_badge);
 }
 
@@ -83,6 +90,7 @@ void Genode::install_mapping(Mapping const &mapping, unsigned long pager_object_
 static void prepopulate_ipc_buffer(addr_t ipc_buffer_phys, Cap_sel ep_sel,
                                    Cap_sel lock_sel)
 {
+	kernel_debugger_outstring("platform_thread.cc: in prepopulate_ipc_buffer()\n\n\n");
 	/* IPC buffer is one page */
 	size_t const page_rounded_size = get_page_size();
 
@@ -116,6 +124,7 @@ static void prepopulate_ipc_buffer(addr_t ipc_buffer_phys, Cap_sel ep_sel,
 
 int Platform_thread::start(void *ip, void *sp, unsigned int cpu_no)
 {
+	kernel_debugger_outstring("platform_thread.cc: in start()\n\n\n");
 	ASSERT(_pd);
 	ASSERT(_pager);
 
@@ -159,6 +168,7 @@ int Platform_thread::start(void *ip, void *sp, unsigned int cpu_no)
 
 void Platform_thread::pause()
 {
+	kernel_debugger_outstring("platform_thread.cc: in pause()\n\n\n");
 	int const ret = seL4_TCB_Suspend(_info.tcb_sel.value());
 	if (ret != seL4_NoError)
 		error("pausing thread failed with ", ret);
@@ -167,6 +177,7 @@ void Platform_thread::pause()
 
 void Platform_thread::resume()
 {
+	kernel_debugger_outstring("platform_thread.cc: in resume()\n\n\n");
 	int const ret = seL4_TCB_Resume(_info.tcb_sel.value());
 	if (ret != seL4_NoError)
 		error("pausing thread failed with ", ret);
@@ -175,6 +186,7 @@ void Platform_thread::resume()
 
 void Platform_thread::state(Thread_state s)
 {
+	kernel_debugger_outstring("platform_thread.cc: Pt in state()\n\n\n");
 	warning(__PRETTY_FUNCTION__, " not implemented");
 	throw Cpu_thread::State_access_failed();
 }
@@ -182,11 +194,12 @@ void Platform_thread::state(Thread_state s)
 
 Thread_state Platform_thread::state()
 {
+	kernel_debugger_outstring("platform_thread.cc: in state()\n\n\n");
 	seL4_TCB   const thread         = _info.tcb_sel.value();
 	seL4_Bool  const suspend_source = false;
 	seL4_Uint8 const arch_flags     = 0;
 	seL4_UserContext registers;
-	seL4_Word  const register_count = sizeof(registers) / sizeof(registers.eip);
+	seL4_Word  const register_count = sizeof(registers) / sizeof(registers.pc);
 
 	int const ret = seL4_TCB_ReadRegisters(thread, suspend_source, arch_flags,
 	                                       register_count, &registers);
@@ -196,20 +209,28 @@ Thread_state Platform_thread::state()
 	}
 
 	Thread_state state;
-	state.ip     = registers.eip;
-	state.sp     = registers.esp;
-	state.edi    = registers.edi;
-	state.esi    = registers.esi;
-	state.ebp    = registers.ebp;
-	state.ebx    = registers.ebx;
-	state.edx    = registers.edx;
-	state.ecx    = registers.ecx;
-	state.eax    = registers.eax;
-	state.gs     = registers.gs;
-	state.fs     = registers.fs;
-	state.eflags = registers.eflags;
-	state.trapno = 0; /* XXX detect/track if in exception and report here */
-	/* registers.tls_base unused */
+
+	/* fame registers */
+	state.ip     = registers.pc;
+	state.sp     = registers.sp;
+	state.cpsr   = registers.cpsr;
+	state.r0     = registers.r0;
+	state.r1     = registers.r1;
+	state.r8     = registers.r8;
+	state.r9     = registers.r9;
+	state.r10    = registers.r10;
+	state.r11    = registers.r11;
+	state.r12    = registers.r12;
+
+	/* other integer frame registers */
+	state.r2     = registers.r2;
+	state.r3     = registers.r3;
+	state.r4     = registers.r4;
+	state.r5     = registers.r5;
+	state.r6     = registers.r6;
+	state.r7     = registers.r7;
+  /* is in seL4_UserContext but not in genode's Cpu_state */
+	//state.r14    = registers.r14;
 
 	return state;
 }
@@ -217,12 +238,14 @@ Thread_state Platform_thread::state()
 
 void Platform_thread::cancel_blocking()
 {
+	kernel_debugger_outstring("platform_thread.cc: in cancel_blocking()\n\n\n");
 	seL4_Signal(_info.lock_sel.value());
 }
 
 
 Weak_ptr<Address_space> Platform_thread::address_space()
 {
+	kernel_debugger_outstring("platform_thread.cc: in address_space()\n\n\n");
 	ASSERT(_pd);
 	return _pd->weak_ptr();
 }
@@ -230,6 +253,7 @@ Weak_ptr<Address_space> Platform_thread::address_space()
 
 void Platform_thread::install_mapping(Mapping const &mapping)
 {
+	kernel_debugger_outstring("platform_thread.cc: in instal_mapping()\n\n\n");
 	_pd->install_mapping(mapping);
 }
 
@@ -249,6 +273,7 @@ Platform_thread::Platform_thread(size_t, const char *name, unsigned priority,
 
 Platform_thread::~Platform_thread()
 {
+	kernel_debugger_outstring("platform_thread.cc: in ~Platform_thread()\n\n\n");
 	if (_pd) {
 		seL4_TCB_Suspend(_info.tcb_sel.value());
 		_pd->unbind_thread(this);

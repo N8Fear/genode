@@ -59,6 +59,7 @@ vpath region_map_component.cc      $(GEN_CORE_DIR)
 vpath io_mem_session_component.cc  $(GEN_CORE_DIR)
 vpath io_mem_session_support.cc    $(GEN_CORE_DIR)
 vpath io_port_session_component.cc $(GEN_CORE_DIR)/spec/x86
+#vpath platform_services.cc         $(GEN_CORE_DIR)
 vpath platform_services.cc         $(GEN_CORE_DIR)/spec/x86
 vpath trace_session_component.cc   $(GEN_CORE_DIR)
 vpath signal_transmitter_proxy.cc  $(GEN_CORE_DIR)

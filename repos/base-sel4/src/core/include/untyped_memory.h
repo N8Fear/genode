@@ -5,10 +5,10 @@
  */
 
 /*
- * Copyright (C) 2015-2017 Genode Labs GmbH
+ * Copyright (C) 2015 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
- * under the terms of the GNU Affero General Public License version 3.
+ * under the terms of the GNU General Public License version 2.
  */
 
 #ifndef _CORE__INCLUDE__UNTYPED_MEMORY_H_
@@ -99,7 +99,7 @@ struct Genode::Untyped_memory
 		for (size_t i = 0; i < num_pages; i++, phys_addr += get_page_size()) {
 
 			seL4_Untyped const service     = untyped_sel(phys_addr).value();
-			int          const type        = seL4_X86_4K;
+			int          const type        = seL4_ARM_SmallPageObject;
 			int          const size_bits   = 0;
 			seL4_CNode   const root        = Core_cspace::top_cnode_sel();
 			int          const node_index  = Core_cspace::TOP_CNODE_PHYS_IDX;
@@ -117,7 +117,7 @@ struct Genode::Untyped_memory
 			                                    num_objects);
 
 			if (ret != seL4_NoError) {
-				error(__FUNCTION__, ": seL4_Untyped_RetypeAtOffset (IA32_4K) "
+				error(__FUNCTION__, ": seL4_Untyped_RetypeAtOffset (ARM_SmallPageObject) "
 				      "returned ", ret);
 				return;
 			}

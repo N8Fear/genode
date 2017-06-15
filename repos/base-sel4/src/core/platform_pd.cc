@@ -5,10 +5,10 @@
  */
 
 /*
- * Copyright (C) 2015-2017 Genode Labs GmbH
+ * Copyright (C) 2015 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
- * under the terms of the GNU Affero General Public License version 3.
+ * under the terms of the GNU General Public License version 2.
  */
 
 /* Genode includes */
@@ -139,11 +139,11 @@ addr_t Platform_pd::_init_page_directory()
 	                            platform_specific()->core_cnode().sel(),
 	                            _page_directory_sel);
 
-	int const ret = seL4_X86_ASIDPool_Assign(platform_specific()->asid_pool().value(),
+	int const ret = seL4_ARM_ASIDPool_Assign(platform_specific()->asid_pool().value(),
 	                                          _page_directory_sel.value());
 
 	if (ret != seL4_NoError)
-		error("seL4_X86_ASIDPool_Assign returned ", ret);
+		error("seL4_ARM_ASIDPool_Assign returned ", ret);
 
 	return phys_addr;
 }

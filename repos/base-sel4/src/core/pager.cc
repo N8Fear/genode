@@ -5,10 +5,10 @@
  */
 
 /*
- * Copyright (C) 2015-2017 Genode Labs GmbH
+ * Copyright (C) 2015 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
- * under the terms of the GNU Affero General Public License version 3.
+ * under the terms of the GNU General Public License version 2.
  */
 
 /* core includes */
@@ -19,6 +19,7 @@
 
 /* base-internal includes */
 #include <base/internal/capability_space_sel4.h>
+#include <base/internal/kernel_debugger.h>
 
 /* seL4 includes */
 #include <sel4/sel4.h>
@@ -49,6 +50,7 @@ struct Fault_info
 
 void Ipc_pager::wait_for_fault()
 {
+	kernel_debugger_outstring("pager.cc: wait_for_fault \n\n\n");
 	if (_last && _reply_sel) {
 		seL4_CNode const service = seL4_CapInitThreadCNode;
 		seL4_Word  const index   = _reply_sel;
@@ -60,11 +62,13 @@ void Ipc_pager::wait_for_fault()
 	_reply_sel = 0;
 	_last = 0;
 	reply_and_wait_for_fault();
+	kernel_debugger_outstring("pager.cc: end wait_for_fault \n\n\n");
 }
 
 
 void Ipc_pager::reply_and_wait_for_fault()
 {
+	kernel_debugger_outstring("pager.cc: reply_and_wait_for_fault \n\n\n");
 	if (_last)
 		install_mapping(_reply_mapping, _last);
 
@@ -91,6 +95,7 @@ void Ipc_pager::reply_and_wait_for_fault()
 	_pf_write = fault_info.write;
 
 	_last = badge;
+	kernel_debugger_outstring("pager.cc: end reply_and_wait_for_fault \n\n\n");
 }
 
 
@@ -124,14 +129,18 @@ Pager_object::~Pager_object()
 
 void Pager_object::wake_up()
 {
+	kernel_debugger_outstring("pager.cc:  wake_up\n\n\n");
 	seL4_MessageInfo_t const send_msg = seL4_MessageInfo_new(0, 0, 0, 0);
 	seL4_Send(_reply_cap.value(), send_msg);
+	kernel_debugger_outstring("pager.cc: end wake_up \n\n\n");
 }
 
 
 void Pager_object::unresolved_page_fault_occurred()
 {
+	kernel_debugger_outstring("pager.cc: unresolved_page_fault_occurred\n\n\n");
 	state.unresolved_page_fault = true;
+	kernel_debugger_outstring("pager.cc: unresolved_page_fault_occurred end\n\n\n");
 }
 
 
@@ -141,6 +150,7 @@ void Pager_object::unresolved_page_fault_occurred()
 
 Untyped_capability Pager_entrypoint::_pager_object_cap(unsigned long badge)
 {
+	kernel_debugger_outstring("pager.cc: _pager_object_cap \n\n\n");
 	/*
 	 * Create minted endpoint capability of the pager entrypoint.
 	 * The badge of the page-fault message is used to find the pager
@@ -149,20 +159,24 @@ Untyped_capability Pager_entrypoint::_pager_object_cap(unsigned long badge)
 	Rpc_obj_key rpc_obj_key((addr_t)badge);
 
 	Untyped_capability ep_cap(Capability_space::create_ep_cap(*this));
+	kernel_debugger_outstring("pager.cc: _pager_object_cap end\n\n\n");
 	return Capability_space::create_rpc_obj_cap(ep_cap, nullptr, rpc_obj_key);
 }
 
 
 void Pager_entrypoint::dissolve(Pager_object *obj)
 {
+	kernel_debugger_outstring("pager.cc: dissolve \n\n\n");
 	using Pool = Object_pool<Pager_object>;
 
 	if (obj) Pool::remove(obj);
+	kernel_debugger_outstring("pager.cc: end dissolve \n\n\n");
 }
 
 
 Pager_capability Pager_entrypoint::manage(Pager_object *obj)
 {
+	kernel_debugger_outstring("pager.cc: manage \n\n\n");
 	Native_capability cap = _pager_object_cap(obj->badge());
 
 	/* add server object to object pool */
@@ -170,12 +184,14 @@ Pager_capability Pager_entrypoint::manage(Pager_object *obj)
 	insert(obj);
 
 	/* return capability that uses the object id as badge */
+	kernel_debugger_outstring("pager.cc: manage end\n\n\n");
 	return reinterpret_cap_cast<Pager_object>(cap);
 }
 
 
 void Pager_entrypoint::entry()
 {
+	kernel_debugger_outstring("pager.cc: entry \n\n\n");
 	using Pool = Object_pool<Pager_object>;
 
 	bool reply_pending = false;
@@ -203,4 +219,5 @@ void Pager_entrypoint::entry()
 			}
 		});
 	}
+	kernel_debugger_outstring("pager.cc: end entry \n\n\n");
 }
