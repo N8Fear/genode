@@ -1,0 +1,8 @@
+--- src/kernel/sel4/configs/am335x/autoconf.h
++++ src/kernel/sel4/configs/am335x/autoconf.h
+@@ -89,3 +89,5 @@
+ #define CONFIG_BUILDSYS_USE_CCACHE 1
+ #define CONFIG_MAX_NUM_NODES 1
+ #define CONFIG_KERNEL_STACK_BITS 12
++#define CONFIG_IPC_BUF_GLOBALS_FRAME 1
++#define CONFIG_ARCH_AARCH32 1
