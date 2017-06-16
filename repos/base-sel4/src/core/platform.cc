@@ -131,9 +131,10 @@ void Platform::_init_allocators()
 	_core_mem_alloc.virt_alloc()->add_range(_vm_base, _vm_size);
 
 	/* remove core image from core's virtual address allocator */
+	addr_t const modules_start = reinterpret_cast<addr_t>(&_boot_modules_binaries_begin);
 	addr_t const core_virt_beg = trunc_page((addr_t)&_prog_img_beg),
 	             core_virt_end = round_page((addr_t)&_prog_img_end);
-	size_t const core_size     = core_virt_end - core_virt_beg;
+	size_t const core_size     = modules_start - core_virt_beg;
 	_core_mem_alloc.virt_alloc()->remove_range(core_virt_beg, core_size);
 
 	/* remove initial IPC buffer from core's virtual address allocator */
@@ -197,8 +198,26 @@ void Platform::_switch_to_core_cspace()
 	for (unsigned sel = bi.untyped.start; sel < bi.untyped.end; sel++)
 		_core_cnode.move(initial_cspace, Cnode_index(sel));
 
-	for (unsigned sel = bi.userImageFrames.start; sel < bi.userImageFrames.end; sel++)
-		_core_cnode.copy(initial_cspace, Cnode_index(sel));
+	/* move selectors of core image */
+	addr_t const modules_start = reinterpret_cast<addr_t>(&_boot_modules_binaries_begin);
+	addr_t const modules_end   = reinterpret_cast<addr_t>(&_boot_modules_binaries_end);
+	addr_t virt_addr = (addr_t)(&_prog_img_beg);
+
+	for (unsigned sel = bi.userImageFrames.start;
+	     sel < bi.userImageFrames.end;
+	     sel++, virt_addr += get_page_size()) {
+
+		/* remove mapping to boot modules, no access required within core */
+		if (modules_start <= virt_addr && virt_addr < modules_end) {
+			seL4_X86_Page const service = sel;
+			long err = seL4_X86_Page_Unmap(service);
+			if (err)
+				error("unmapping boot modules ", Hex(virt_addr));
+		}
+
+		/* insert cap for core image */
+		_core_cnode.move(initial_cspace, Cnode_index(sel));
+	}
 
 	/* copy statically created CNode selectors to core's CNode */
 	_core_cnode.copy(initial_cspace, Cnode_index(Core_cspace::top_cnode_sel()));
@@ -270,15 +289,14 @@ void Platform::_init_core_page_table_registry()
 	 * Register initial page frames
 	 */
 	virt_addr = (addr_t)(&_prog_img_beg);
-	for (unsigned sel = bi.userImageFrames.start; sel < bi.userImageFrames.end; sel++) {
-
+	for (unsigned sel = bi.userImageFrames.start;
+	     sel < bi.userImageFrames.end;
+	     sel++, virt_addr += get_page_size()) {
 		/* skip boot modules */
 		if (modules_start <= virt_addr && virt_addr <= modules_end)
 			continue;
 
 		_core_page_table_registry.insert_page_table_entry(virt_addr, sel);
-
-		virt_addr += get_page_size();
 	}
 }
 
@@ -343,7 +361,7 @@ void Platform::_init_rom_modules()
 		 */
 		Cnode_base const initial_cspace(Cap_sel(seL4_CapInitThreadCNode), 32);
 		for (unsigned i = 0; i < module_num_frames; i++)
-			_phys_cnode.copy(initial_cspace, Cnode_index(module_frame_sel + i),
+			_phys_cnode.move(initial_cspace, Cnode_index(module_frame_sel + i),
 			                                 Cnode_index(dst_frame + i));
 
 		log("boot module '", (char const *)header->name, "' "
