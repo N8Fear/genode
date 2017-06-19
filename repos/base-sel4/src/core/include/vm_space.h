@@ -255,7 +255,9 @@ class Genode::Vm_space
 				if (core_vm)
 					_lock.unlock();
 
-				create<Page_table_kobj>(_phys_alloc,
+				addr_t const phys_addr     = Untyped_memory::alloc_page(_phys_alloc);
+				seL4_Untyped const service = Untyped_memory::untyped_sel(phys_addr).value();
+				create<Page_table_kobj>(service,
 				                        _leaf_cnode(pt_idx).sel(),
 				                        _leaf_cnode_entry(pt_idx));
 

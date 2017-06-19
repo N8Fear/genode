@@ -408,7 +408,9 @@ Platform::Platform()
 	Cap_sel lock_sel (INITIAL_SEL_LOCK);
 	Cap_sel core_sel = _core_sel_alloc.alloc();
 
-	create<Notification_kobj>(*ram_alloc(), core_cnode().sel(), core_sel);
+	addr_t phys_addr = Untyped_memory::alloc_page(*ram_alloc());
+	seL4_Untyped const service     = Untyped_memory::untyped_sel(phys_addr).value();
+	create<Notification_kobj>(service, core_cnode().sel(), core_sel);
 
 	/* mint a copy of the notification object with badge of lock_sel */
 	_core_cnode.mint(_core_cnode, core_sel, lock_sel);

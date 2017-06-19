@@ -159,7 +159,9 @@ class Genode::Cnode : public Cnode_base, Noncopyable
 		:
 			Cnode_base(dst_idx, size_log2)
 		{
-			_phys = create<Cnode_kobj>(phys_alloc, parent_sel, dst_idx, size_log2);
+			_phys = Untyped_memory::alloc_page(phys_alloc);
+			seL4_Untyped const service = Untyped_memory::untyped_sel(_phys).value();
+			create<Cnode_kobj>(service, parent_sel, dst_idx, size_log2);
 		}
 
 		/**
@@ -181,7 +183,8 @@ class Genode::Cnode : public Cnode_base, Noncopyable
 		:
 			Cnode_base(dst_idx, size_log2)
 		{
-			create<Cnode_kobj>(untyped_pool, parent_sel, dst_idx, size_log2);
+			seL4_Untyped sel = untyped_pool.alloc(Cnode_kobj::SIZE_LOG2 + size_log2);
+			create<Cnode_kobj>(sel, parent_sel, dst_idx, size_log2);
 		}
 
 		void destruct(Range_allocator &phys_alloc, bool revoke = false)

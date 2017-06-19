@@ -61,17 +61,26 @@ void Genode::Thread_info::init(addr_t const utcb_virt_addr)
 	ipc_buffer_phys = Untyped_memory::alloc_page(phys_alloc);
 	Untyped_memory::convert_to_page_frames(ipc_buffer_phys, 1);
 
+	addr_t phys_addr = Untyped_memory::alloc_page(phys_alloc);
+	seL4_Untyped const service     = Untyped_memory::untyped_sel(phys_addr).value();
+
 	/* allocate TCB within core's CNode */
 	tcb_sel = platform.core_sel_alloc().alloc();
-	create<Tcb_kobj>(phys_alloc, platform.core_cnode().sel(), tcb_sel);
+	create<Tcb_kobj>(service, platform.core_cnode().sel(), tcb_sel);
+
+	phys_addr = Untyped_memory::alloc_page(phys_alloc);
+	seL4_Untyped const service2  = Untyped_memory::untyped_sel(phys_addr).value();
 
 	/* allocate synchronous endpoint within core's CNode */
 	ep_sel = platform.core_sel_alloc().alloc();
-	create<Endpoint_kobj>(phys_alloc, platform.core_cnode().sel(), ep_sel);
+	create<Endpoint_kobj>(service2, platform.core_cnode().sel(), ep_sel);
+
+	phys_addr = Untyped_memory::alloc_page(phys_alloc);
+	seL4_Untyped const service3  = Untyped_memory::untyped_sel(phys_addr).value();
 
 	/* allocate asynchronous object within core's CSpace */
 	lock_sel = platform.core_sel_alloc().alloc();
-	create<Notification_kobj>(phys_alloc, platform.core_cnode().sel(), lock_sel);
+	create<Notification_kobj>(service3, platform.core_cnode().sel(), lock_sel);
 
 	/* assign IPC buffer to thread */
 	{
