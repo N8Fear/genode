@@ -130,8 +130,9 @@ void Genode::start_sel4_thread(Cap_sel tcb_sel, addr_t ip, addr_t sp)
 	Genode::memset(&regs, 0, sizeof(regs));
 	size_t const num_regs = sizeof(regs)/sizeof(seL4_Word);
 
-	regs.eip = ip;
-	regs.esp = sp;
+	//TODO registers need to be fixed (hvb)
+	//regs.eip = ip;
+	//regs.esp = sp;
 	//TODO regs.fs  = IPCBUF_GDT_SELECTOR;
 	// was cspr in old try (hvb)
 

@@ -158,7 +158,6 @@ void Platform::_init_allocators()
 	/* preserve stack area in core's virtual address space */
 	_core_mem_alloc.virt_alloc()->remove_range(stack_area_virtual_base(),
 	                                           stack_area_virtual_size());
-<<<<<<< HEAD
 	if (verbose_boot_info) {
 		typedef Hex_range<addr_t> Hex_range;
 		log("virtual adress layout of core:");
@@ -170,9 +169,8 @@ void Platform::_init_allocators()
 		log(" stack area ", Hex_range(stack_area_virtual_base(),
 		                              stack_area_virtual_size()));
 	}
-=======
+	//TODO to be removed...
   kernel_debugger_outstring("init_allocator: end\n\n\n");
->>>>>>> hardcode arm stuff
 }
 
 
@@ -221,8 +219,8 @@ void Platform::_switch_to_core_cspace()
 
 		/* remove mapping to boot modules, no access required within core */
 		if (modules_start <= virt_addr && virt_addr < modules_end) {
-			seL4_X86_Page const service = sel;
-			long err = seL4_X86_Page_Unmap(service);
+			seL4_ARM_Page const service = sel;
+			long err = seL4_ARM_Page_Unmap(service);
 			if (err)
 				error("unmapping boot modules ", Hex(virt_addr));
 		}
@@ -440,6 +438,7 @@ Platform::Platform()
 	ASSERT(sender == INITIAL_SEL_LOCK);
 
 	/* I/O port allocator (only meaningful for x86) */
+	// TODO - likely don't need for arm in that form
 	_io_port_alloc.add_range(0, 0x10000);
 
 	/*

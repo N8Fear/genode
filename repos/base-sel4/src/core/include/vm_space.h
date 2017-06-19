@@ -191,7 +191,7 @@ class Genode::Vm_space
 				seL4_ARM_Page          const service = _idx_to_sel(pte_idx);
 				seL4_ARM_PageDirectory const pd      = _pd_sel.value();
 				seL4_Word              const vaddr   = to_virt;
-				seL4_CapRights         const rights  = seL4_AllRights;
+				seL4_CapRights_t       const rights  = seL4_AllRights;
 				seL4_ARM_VMAttributes  const attr    = seL4_ARM_Default_VMAttributes;
 
 				int const ret = seL4_ARM_Page_Map(service, pd, vaddr, rights, attr);
@@ -210,8 +210,8 @@ class Genode::Vm_space
 			/* delete copy of the mapping's page-frame selector */
 			_page_table_registry.apply(virt, [&] (unsigned idx) {
 
-				seL4_X86_Page const service = _idx_to_sel(idx);
-				long err = seL4_X86_Page_Unmap(service);
+				seL4_ARM_Page const service = _idx_to_sel(idx);
+				long err = seL4_ARM_Page_Unmap(service);
 				if (err)
 					error("unmap ", Hex(virt), " failed, idx=", idx, " res=", err);
 
