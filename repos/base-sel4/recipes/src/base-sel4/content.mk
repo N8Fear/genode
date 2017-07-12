@@ -38,5 +38,7 @@ content:
 	  mv lib/mk/spec/$$spec/ld-sel4.mk lib/mk/spec/$$spec/ld.mk; \
 	  done;
 	sed -i "s/ld-sel4/ld/"          src/lib/ld/sel4/target.mk
-	sed -i "s/pit_timer_drv/timer/" src/drivers/timer/pit/target.mk
+	if ( !spec==wega_am335x); then
+	  sed -i "s/pit_timer_drv/timer/" src/drivers/timer/pit/target.mk;
+	fi
 
