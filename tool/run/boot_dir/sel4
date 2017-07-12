@@ -92,7 +92,7 @@ proc run_boot_dir {binaries} {
 	# Use seL4 elfloader tool to generate bootable image on ARM
 	#
 	if {[have_spec arm]} {
-		if {![have_spec imx6]} {
+		if {![have_spec imx6] && ![have_spec wega_am335x]} {
 			puts "abort - unknown ARM board"
 			exit 1
 		}
@@ -100,7 +100,12 @@ proc run_boot_dir {binaries} {
 		exec mv [run_dir]/boot/image.elf [run_dir]/boot/genode.elf
 
 		# call seL4 elfloader tool to generate image.elf bootable by uboot with 'bootelf' command
-		set ::env(PLAT) imx6
+		if {[have_spec imx6]} {
+			set ::env(PLAT) imx6
+		}
+		if {[have_spec wega_am335x]} {
+			set ::env(PLAT) am335x
+		}
 		set ::env(TOOLPREFIX) [cross_dev_prefix]
 		exec [sel4_elfloader_dir]/gen_boot_image.sh [run_dir]/boot/sel4 [run_dir]/boot/genode.elf [run_dir]/boot/image.elf
 	}
