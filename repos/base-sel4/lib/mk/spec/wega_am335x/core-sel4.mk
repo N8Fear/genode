@@ -1,5 +1,7 @@
-SRC_CC += $(addprefix spec/arm/, boot_info.cc thread.cc platform.cc \
-                                 platform_pd.cc vm_space.cc)
+SRC_CC += $(addprefix spec/arm/, boot_info.cc thread.cc platform.cc irq.cc \
+                                 vm_space.cc)
+
+INC_DIR += $(REP_DIR)/src/core/spec/arm
 
 include $(REP_DIR)/lib/mk/core-sel4.inc
 
