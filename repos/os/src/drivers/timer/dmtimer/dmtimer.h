@@ -28,484 +28,407 @@ class Genode::Dmtimer_base : public Mmio
 		enum { TICS_PER_MS = 66000 };
 
 		/**
-		 * TIDR: contains IP revision code
+		 * TIDR Register
+		 * This read only register contains the revision number of the module. A
+		 * write to this register has no effect.  This register is used by software
+		 * to track features, bugs, and compatibility.
 		 */
 		struct tidr : Register<0x0,32>
 		{
-			struct tid_rev_min: Bitfield<0,4> { };
-			struct tid_rev_maj: Bitfield<4,4> { };
+			struct y_minor : Bitfield<0,6> { };
+			struct custom  : Bitfield<6,2> { };
+			struct x_major : Bitfield<8,3> { };
+			struct r_rtl   : Bitfield<11,5> { };
+			struct func    : Bitfield<16,12> { };
+			struct scheme  : Bitfield<30,2> { };
 		};
 
-		/* Internal OCP clock gating strategy */
+		/**
+		 * TIOCP_CFG Register
+		 * This register allows controlling various parameters of the OCP interface.
+		 */
 		struct tiocp_cfg : Register<0x10,32>
 		{
-			struct autoidle : Bitfield<0,1>
-			{
-				enum {
-					DKFREE = 0, /* OCP clock is free-running */
-					DKGATE = 1, /* Automatic OCP clock gating strategy is applied, based on the OCP interface activity */
-				};
-			};
-
 			/* Software reset (automatically set by hardware) */
-			struct softreset : Bitfield<1,1>
+			struct softreset : Bitfield<0,1>
 			{
 				enum {
-					NMODE   = 0, /* Normal mode */
-					RSTMODE = 1, /* The module is reset */
-				};
-			};
-
-			/* Wake-up feature global control */
-			struct enawakeup : Bitfield<2,1>
-			{
-				enum {
-					NOWAKE  = 0, /* No wakeup line assertion in idle mode */
-					ENBWAKE = 1, /*Wakeup line assertion enabled in smart-idle mode */
-				};
-			};
-
-			/* Powermanagement, req/ack control */
-			struct idlemode : Bitfield<3,2>
-			{
-				enum {
-					FIDLE = 0, /* Force-idle. An idle request is acknowledged unconditionally */
-					NIDLE = 1, /* No-idle. An idle request is never acknowledged */
-					SIDLE = 2, /* Smart-Idle. ACknowledgemenet to an idle re	quest is given based on the internal activity of the module */
-					SIDLE_WAKE = 3, /* Smart-idle wackeup capable. Similar to DIDLE, but can generate Wakeup event in idle state */
+					NO_ACTION     = 0,
+					RESET_ONGOING = 1,
 				};
 			};
 
 			/* Sensitivity to emulation suspend events from Debug subsystem. */
-			struct emulfree : Bitfield<5,1>
+			struct emulfree : Bitfield<1,1>
 			{
-				enum {
-					TIMER_FROZEN = 0, /* Timer counter frozen during debug suspend */
-					TIMER_FREE   = 1, /* Timer counter free-running, debug suspend is ignored */
-				};
+				enum { TIMER_FROZEN = 0, TIMER_FREE   = 1, };
 			};
 
-			struct clockactivity : Bitfield<8,2> { };
-		};
-
-		/* Provides status information about the module, excluding interrupt status info */
-		struct tistat : Register<0x14,32>
-		{
-			struct resetdone : Bitfield<0,1>
+			/* Powermanagement, req/ack control */
+			struct idlemode : Bitfield<2,2>
 			{
 				enum {
-					RSTONGOING = 0, /* Internal module reset ongoing */
-					RSTCOMP    = 1, /* Reset completed */
+					FORCE_IDLE      = 0,
+					NO_IDLE         = 1,
+					SMART_IDLE      = 2,
+					SIDLE_IDLE_WAKE = 3,
 				};
 			};
 		};
 
-		/* Timer Status Register, is used to determine which of the tier events requested an interrupt */
-		struct tisr : Register<0x18,32>
+		/**
+		 * IRQ_EOI Register
+		 * This module supports DMA events with its interrupt signal. This register
+		 * must be written to after the DMA completes in order for subsequent DMA
+		 * events to be triggered from this module.
+		 */
+		struct irq_eoi : Register<0x20,32>
 		{
-			/* The compare result of TCRR and TMAR */
+			struct dmaevent_ack : Bitfield<0,1>
+			{
+				enum { ACK_DMA_EVENT = 0, };
+			};
+		};
+
+		/**
+		 * IRQSTATUS_RAW
+		 * Component interrupt request status. Check the corresponding secondary
+		 * status register. Raw status is set even if event is not enabled. Write 1
+		 * to set the (raw) status, mostly for debug.
+		 */
+		struct irqstatus_raw : Register<0x24,32>
+		{
 			struct mat_it_flag : Bitfield<0,1>
 			{
 				enum {
-					MAT_IT_FLAG_0 = 0, /* No compare interrupt request */
-					MAT_IT_FLAG_1 = 1, /* Compare interrupt pendung */
+					MAT_IRQ_PENDING  = 0,
+					MAT_IRQ_NO       = 1,
 				};
 			};
 
-			/* TCRR overflow */
 			struct ovf_it_flag : Bitfield<1,1>
 			{
 				enum {
-					OVF_IT_FLAG_0 = 0, /* No compare interrupt request */
-					OVF_IT_FLAG_1 = 1, /* Compare interrupt pendung */
+					OVF_IRQ_PENDING = 0,
+					OVF_IRQ_NO      = 1,
 				};
 			};
 
-			/* Indicates when an external pulse transition of the correct polarity is detected on the external pin PIEVENTCAPT */
 			struct tcar_it_flag : Bitfield<2,1>
 			{
 				enum {
-					TCAR_IT_FLAG_0 = 0, /* No compare interrupt request */
-					TCAR_IT_FLAG_1 = 1, /* Compare interrupt pendung */
+					TCAR_IRQ_PENDING = 0,
+					TCAR_IRQ_NO      = 1,
+				};
+			};
+		};
+		/**
+		 * IRQENABLE_SET Register
+		 * Component interrupt request enable. Write 1 to set (enable interrupt).
+		 * Readout equal to corresponding _CLR register.
+		 */
+		struct irqenable_set: Register<0x2C,32>
+		{
+			struct mat_en_flag : Bitfield<0,1>
+			{
+				enum {
+					MAT_IRQ_ENABLED  = 0,
+					MAT_IRQ_DISABLED = 1,
+				};
+			};
+
+			struct ovf_en_flag : Bitfield<1,1>
+			{
+				enum {
+					OVF_IRQ_ENABLED  = 0,
+					OVF_IRQ_DISABLED = 1,
+				};
+			};
+
+			struct tcar_en_flag : Bitfield<2,1>
+			{
+				enum {
+					TCAR_IRQ_ENABLED  = 0,
+					TCAR_IRQ_DISABLED = 1,
 				};
 			};
 		};
 
-		/* This register controls (enables/disable) the interrupt events */
-		struct tier : Register<0x1C,32>
+		/**
+		 * IRQENABLE_CLR Register
+		 * Component interrupt request enable. Write 1 to clear (disable
+		 * interrupt). Readout equal to corresponding _SET register.
+		 */
+		struct irqenable_clr: Register<0x30,32>
 		{
-			/* Enable match interrupt */
-			struct mat_it_ena : Bitfield<0,1>
+			struct mat_en_flag : Bitfield<0,1>
 			{
 				enum {
-					DSB_MATCH = 0, /* Disable match interrupt */
-					ENB_MATCH = 1, /* Enable match interrupt */
+					MAT_CLR_ENABLED  = 0,
+					MAT_CLR_DISABLED = 1,
 				};
 			};
 
-			/* Enable overflow interrupt */
-			struct ovf_it_ena : Bitfield<1,1>
+			struct ovf_en_flag : Bitfield<1,1>
 			{
 				enum {
-					DSB_OVF = 0, /* Disable overflow interrupt */
-					ENB_OVF = 1, /* Enable overflow interrupt */
+					OVF_CLR_ENABLED  = 0,
+					OVF_CLR_DISABLED = 1,
 				};
 			};
 
-			/* Enable capture interrupt */
-			struct tcar_it_ena : Bitfield<2,1>
+			struct tcar_en_flag : Bitfield<2,1>
 			{
 				enum {
-					DSB_CAPT = 0, /* Disable capture interrupt */
-					ENB_CAPT = 1, /* Enable capture interrupt */
+					TCAR_CLR_ENABLED  = 0,
+					TCAR_CLR_DISABLED = 1,
 				};
 			};
 		};
 
-		/* This register controls (enable/disable) the wakeup feature on specific interrupt events */
-		struct twer : Register<0x20,32>
+		/**
+		 * IRQWAKEEN Register
+		 * IRQWAKEEN is shown in Figure 20-13 and described in Table 20-18.
+		 * Wakeup-enabled events taking place when module is idle will generate an
+		 * asynchronous wakeup.
+		 */
+		struct irqwakeen : Register<0x34,32>
 		{
-			/* Control match wakeup */
 			struct mat_wup_ena : Bitfield<0,1>
 			{
 				enum {
-					DSBWUPMAT = 0, /* Disable match wakeup */
-					ENBWUPMAT = 1, /* Enable matchh wakeup */
+					MAT_WUP_DISABLED = 0,
+					MAT_WUP_ENABLED  = 1,
 				};
 			};
-
-			/* Control overflow wakeup */
 			struct ovf_wup_ena : Bitfield<1,1>
 			{
 				enum {
-					DSBWUPOVF = 0, /* Disable overflow wakeup */
-					ENBWUPOVF = 1, /* Enable overflow wakeup */
+					OVF_WUP_DISABLED = 0,
+					OVF_WUP_ENABLED  = 1,
 				};
 			};
-
-			/* Control capture wakeup */
 			struct tcar_wup_ena : Bitfield<2,1>
 			{
 				enum {
-					DSBWUPCAP = 0, /* Disable capture wakeup */
-					ENBWUPCAP = 1, /* Enable capture wakeup */
+					TCAR_WUP_DISABLED = 0,
+					TCAR_WUP_ENABLED  = 1,
 				};
 			};
 		};
 
-		/* This register controls optional features specific to the timer functionality */
-		struct tclr : Register<0x24,32>
+		/**
+		 * TCLR Register
+		 * When the TCM field passed from (00) to any other combination then the
+		 * TCAR_IT_FLAG and the edge detection logic are cleared. The ST bit of
+		 * TCLR register may be updated from the OCP interface or reset due to
+		 * one-shot overflow. The OCP interface update has the priority.
+		 */
+		struct tclr : Register<0x38,32>
 		{
-			/* Start/Stop timer control */
 			struct st : Bitfield<0,1>
 			{
-				enum {
-					CNT_STOP  = 0, /* Stop the timer */
-					CNT_START = 1, /* Start the timer */
-				};
+				enum { STOP_TIMER  = 0, START_TIMER = 1, };
 			};
 
-			/* Auto-reload mode */
 			struct ar : Bitfield<1,1>
 			{
-				enum {
-					ONE_SHOT = 0, /* One shot mode overflow */
-					AUTO_REL = 1, /* Auto-reload mode overflow */
-				};
+				enum { ONE_SHOT   = 0, AUTORELOAD = 1, };
 			};
 
-			/* Trigger output mode */
-			struct ptv : Bitfield<2,3>
-			{
-			};
 
-			/* Prescaler enable */
+			struct ptv : Bitfield<2,3> { };
+
 			struct pre : Bitfield<5,1>
 			{
 				enum {
-					NO_PRESCAL = 0, /* Prescaler disabled */
-					PRESCAL_ON = 1, /* Prescaler enabled */
+					TIMER_PIN_INPUT_CLOCKS_COUNTER   = 0,
+					DIVIDED_INPUT_PIN_CLOCKS_COUNTER = 1,
 				};
 			};
 
-			/* Compare enable */
 			struct ce : Bitfield<6,1>
 			{
 				enum {
-					DSB_CMP = 0, /* Compare disabled */
-					ENB_CMP = 1, /* Compare enabled */
+					COMPARE_MODE_DISABLED = 0,
+					COMPARE_MODE_ENABLED  = 1,
 				};
 			};
 
-			/* Pulse width modulation output pin default value */
 			struct scpwm : Bitfield<7,1>
 			{
 				enum {
-					DEF_LOW  = 0, /* Default value for PORPWM: 0 */
-					DEF_HIGH = 1, /* Default value for PORPWM: 1 */
+					CLEAR_PORTIMERPWM_OUT_POS_PULSE = 0,
+					SET_PORTIMERPWM_OUT_NEG_PULSE = 1,
 				};
 			};
 
-			/* Transition capture mode */
 			struct tcm : Bitfield<8,2>
 			{
 				enum {
-					NO_EDGE    = 0, /* No capture */
-					RISE_EDGE  = 1, /* Capture on rising edge of PIEVENTCAPT */
-					FALL_EDGE  = 2, /* Capture on falling edge of PIEVENTCAPT */
-					BOTH_EDGES = 3, /* Capture on both edges of PIEVENTCAPT */
+					NO_CAPTURE          = 0,
+					CAPTURE_LOW_TO_HIGH = 1,
+					CAPTURE_HIGH_TO_LOW = 2,
+					CAPTURE_BOTH_EDGES  = 3,
 				};
 			};
 
-			/* Trigger output mode */
 			struct trg : Bitfield<10,2>
 			{
 				enum {
-					NO_TRG      = 0, /* No trigger */
-					OVF_TRG     = 1, /* Overflow trigger */
-					OVF_MAT_TRG = 2, /* Overflow and match trigger */
+					NO_TRIGGER = 0,
+					TRIGGER_ON_OVERFLOW = 1,
+					TRIGGER_ON_OVERFLOW_AND_MATCH = 2,
 				};
 			};
 
-			/* Pulse or Toggle select bit */
 			struct pt : Bitfield<12,1>
 			{
-				enum {
-					PULSE  = 0, /* Pulse modulation */
-					TOGGLE = 1, /* Toggle modulation */
-				};
+				enum { PULSE = 0, TOGGLE = 1, };
 			};
 
-			/* Capture mode select bit (first/second) */
 			struct capt_mode : Bitfield<13,1>
 			{
 				enum {
-					FIRST_CAPT = 0, /* Capture the first enabled capture event in TCAR1 */
-					SEC_CAPT   = 1, /* Capture the second enabled capture event in TCAR2 */
+					SINGLE_CAPTURE = 0,
+					CAPTURE_ON_SECOND_EVENT = 1,
 				};
 			};
 
-			struct gpo_cfg : Bitfield<14,1> { };
-
+			struct gpo_cfg : Bitfield<14,1>
+			{
+				enum {
+					PORGPOCFG_DRIVES_0_TIMER_PIN_OUTPUT = 0,
+					PORGPOCFG_DRIVES_1_TIMER_PIN_INPUT  = 1,
+				};
+			};
 		};
 
 		/* This register holds the value of the internal counter */
-		struct tcrr : Register<0x28,32> { };
+		struct tcrr : Register<0x3C,32> { };
 
 		/* This register holds the timer's load value */
-		struct tldr : Register<0x2C,32> { };
+		struct tldr : Register<0x40,32> { };
 
 		/* This register triggers a counter reload of timer by writing any value in it */
-		struct ttgr : Register<0x30,32> { };
+		struct ttgr : Register<0x44,32> { };
 
 		/* This register contains the write posting bits for all writable functional registers */
-		struct twps : Register<0x34,32>
+		struct twps : Register<0x48,32>
 		{
 			struct w_pend_tclr : Bitfield<0,1>
 			{
-				enum {
-					CLR_NPEND = 0, /* No control register write pending */
-					CLR_PEND  = 1, /* Control register write pendung */
-				};
+				enum { CLR_NPEND = 0, CLR_PEND  = 1, };
 			};
 
 			struct w_pend_tccr : Bitfield<1,1>
 			{
-				enum {
-					CRR_NPEND = 0, /* No write pending */
-					CRR_PEND  = 1, /* Write pending */
-				};
+				enum { CRR_NPEND = 0, CRR_PEND  = 1, };
 			};
 
 			struct w_pend_tldr : Bitfield<2,1>
 			{
-				enum {
-					LDR_NPEND = 0, /* No write pending */
-					LDR_PEND  = 1, /* Write pending */
-				};
+				enum { LDR_NPEND = 0, LDR_PEND  = 1, };
 			};
 
 			struct w_pend_ttgr : Bitfield<3,1>
 			{
-				enum {
-					TGR_NPEND = 0, /* No write pending */
-					TGR_PEND  = 1, /* Write pending */
-				};
+				enum { TGR_NPEND = 0, TGR_PEND  = 1, };
 			};
 
 			struct w_pend_tmar : Bitfield<4,1>
 			{
-				enum {
-					MAR_NPEND = 0, /* No write pending */
-					MAR_PEND  = 1, /* Write pending */
-				};
-			};
-
-			struct w_pend_tpir : Bitfield<5,1>
-			{
-				enum {
-					PIR_NPEND = 0, /* No write pending */
-					PIR_PEND  = 1, /* Write pending */
-				};
-			};
-
-			struct w_pend_tnir : Bitfield<6,1>
-			{
-				enum {
-					NIR_NPEND = 0, /* No write pending */
-					NIR_PEND  = 1, /* Write pending */
-				};
-			};
-
-			struct w_pend_tcvr : Bitfield<7,1>
-			{
-				enum {
-					CVR_NPEND = 0, /* No write pending */
-					CVR_PEND  = 1, /* Write pending */
-				};
-			};
-
-			struct w_pend_tocr : Bitfield<8,1>
-			{
-				enum {
-					OCR_NPEND = 0, /* No write pending */
-					OCR_PEND  = 1, /* Write pending */
-				};
-			};
-
-			struct w_pend_towr : Bitfield<9,1>
-			{
-				enum {
-					OWR_NPEND = 0, /* No write pending */
-					OWR_PEND  = 1, /* Write pending */
-				};
+				enum { MAR_NPEND = 0, MAR_PEND  = 1, };
 			};
 		};
 
 		/* This register holds the match value to be compared with the counter's value */
-		struct tmar : Register<0x38,32> { };
+		struct tmar : Register<0x4c,32> { };
 
 		/* This register holds the value of the first counter register capture */
-		struct tcar1 : Register<0x3C,32> { };
+		struct tcar1 : Register<0x50C,32> { };
 
 		/* Timer synchronous interface control register */
-		struct tsicr : Register<0x40,32>
+		struct tsicr : Register<0x54,32>
 		{
 			struct sft : Bitfield<1,1>
 			{
-				enum {
-					SFT_0 = 0, /* Software reset is disabled */
-					SFT_1 = 1, /* Software reset is enabled */
-				};
+				enum { SFT_0 = 0, SFT_1 = 1, };
 			};
 
-			/*
-			 * 0x0 = posted mode inactive, 0x1 posted mode active (clocks radio needs to fit  freq (timer) less than freq
-			 * (OCP)/4 frequency requirement.
-			 */
-			struct posted : Bitfield<2,1> { };
+			struct posted : Bitfield<2,1>
+			{
+				enum {
+					POSTED_MODE_INACTIVE = 0,
+					POSTED_MODE_ACTIVE   = 1,
+				};
+			};
 		};
 
 		/* This register holds the value of the second counter register capture */
 		struct tcar2 : Register<0x44,32> { };
 
-		/*
-		 * This register is used for 1ms tick generation. The TPIR register holds
-		 * the value of the positive increment. The value of this register is added
-		 * with the value of the TCVR to define wether next value loaded in TCRR will
-		 * be the sub-period value or the over-period value.
-		 */
-		struct tpir : Register<0x48,32> { };
-
-		/*
-		 * This register is used for 1ms tick generation. The TNIR register holds
-		 * the value of the negative increment. The value of this register is added
-		 * with the value of the TCVR to define wether next value loaded in TCRR will
-		 * be the sub-period value or the over-period value.
-		 */
-		struct tnir : Register<0x4C,32> { };
-
-		/*
-		 * This register is used for 1ms tick generation. The TCVR register defines
-		 * wether next value loaded in TCRR will be the sub-period value or the
-		 * over-period value.
-		 */
-		struct tcvr : Register<0x50,32> { };
-
-		/* This register is used to mask the tick interrupt for a selected number of ticks. */
-		struct tocr : Register<0x54,32>
-		{
-			struct ovf_counter_value : Bitfield<0,24> { };
-		};
-
-		/* This register holds the number of masked overflow interrupts */
-		struct towr : Register<0x58,32>
-			{
-				struct ovf_wrapping_value : Bitfield<0,24> { };
-			};
-
-
-		//	/**
-		//	 * Register value that configures the timer for a one-shot run
-		//	 */
-		//	static access_t prepare_one_shot()
-		//	{
-		//		return En::bits(0) |
-		//		       En_mod::bits(En_mod::RELOAD) |
-		//		       Oci_en::bits(1) |
-		//		       Rld::bits(Rld::RELOAD_FROM_LR) |
-		//		       Prescaler::bits(Prescaler::DIVIDE_BY_1) |
-		//		       Swr::bits(0) |
-		//		       Iovw::bits(0) |
-		//		       Dbg_en::bits(0) |
-		//		       Wait_en::bits(0) |
-		//		       Doz_en::bits(0) |
-		//		       Stop_en::bits(0) |
-		//		       Om::bits(Om::DISCONNECTED) |
-		//		       Clk_src::bits(Clk_src::HIGH_FREQ_REF_CLK);
-		//	}
-		//};
-
 		/**
-		 * Status register
+		 * Register value that configures the timer for a one-shot run
 		 */
-		//struct Sr : Register<0x4, 32>
-		//{
+	//static access_t prepare_one_shot()
+	//{
+	//		return En::bits(0) |
+	//		       En_mod::bits(En_mod::RELOAD) |
+	//		       Oci_en::bits(1) |
+	//		       Rld::bits(Rld::RELOAD_FROM_LR) |
+	//		       Prescaler::bits(Prescaler::DIVIDE_BY_1) |
+	//		       Swr::bits(0) |
+	//		       Iovw::bits(0) |
+	//		       Dbg_en::bits(0) |
+	//		       Wait_en::bits(0) |
+	//		       Doz_en::bits(0) |
+	//		       Stop_en::bits(0) |
+	//		       Om::bits(Om::DISCONNECTED) |
+	//		       Clk_src::bits(Clk_src::HIGH_FREQ_REF_CLK);
+	//	}
+	//};
+
+	/**
+	 * Status register
+	 */
+	//struct Sr : Register<0x4, 32>
+	//{
 		//	struct Ocif : Bitfield<0, 1> { }; /* IRQ status, write 1 clears */
-		//};
+	//};
 
 		//struct Lr   : Register<0x8,  32> { }; /* load value register */
 		//struct Cmpr : Register<0xc,  32> { }; /* compare value register */
 		//struct Cnt  : Register<0x10, 32> { }; /* counter register */
 
-		/**
-		 * Disable timer and clear its interrupt output
-		 */
-		void _reset()
-		{
-			/* wait until ongoing reset operations are finished */
+	/**
+	 * Disable timer and clear its interrupt output
+	 */
+	void _reset()
+	{
+		/* wait until ongoing reset operations are finished */
 //			while (read<Cr::Swr>()) ;
 
-			/* disable timer */
+		/* disable timer */
 //			write<Cr::En>(0);
 
-			/* clear interrupt */
+		/* clear interrupt */
 //			write<Sr::Ocif>(1);
-		}
+	}
 
-		void _start_one_shot(unsigned const tics)
-		{
-			/* stop timer */
-			_reset();
+	void _start_one_shot(unsigned const tics)
+	{
+		/* stop timer */
+		_reset();
 
-			/* configure timer for a one-shot */
+		/* configure timer for a one-shot */
 //			write<Cr>(Cr::prepare_one_shot());
 //			write<Lr>(tics);
 //			write<Cmpr>(0);
 
-			/* start timer */
+		/* start timer */
 //			write<Cr::En>(1);
-		}
+	}
 
 	public:
 
@@ -539,7 +462,8 @@ class Genode::Dmtimer_base : public Mmio
 		/**
 		 * Translate microseconds to a native timer value
 		 */
-		unsigned us_to_tics(unsigned const us) const
+		unsigned us_to_tics(unsigned const us)
+		const
 		{
 			return (1ULL * us * TICS_PER_MS) / 1000;
 		}
@@ -547,7 +471,8 @@ class Genode::Dmtimer_base : public Mmio
 		/**
 		 * Translate native timer value to microseconds
 		 */
-		unsigned tics_to_us(unsigned const tics) const
+		unsigned tics_to_us(unsigned const tics)
+		const
 		{
 			return (1ULL * tics * 1000) / TICS_PER_MS;
 		}
@@ -555,7 +480,8 @@ class Genode::Dmtimer_base : public Mmio
 		/**
 		 * Return current native timer value
 		 */
-		unsigned value(bool &wrapped) const
+		unsigned value(bool &wrapped)
+		const
 		{
 //			unsigned cnt = read<Cnt>();
 //			wrapped = (bool)read<Sr::Ocif>();
