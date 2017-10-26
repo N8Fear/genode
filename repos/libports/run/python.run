@@ -4,9 +4,6 @@
 # \date   2011-11-22
 #
 
-if {![have_spec x86]} {
-	puts "Run script is only supported on x86"; exit 0 }
-
 #
 # Build
 #
