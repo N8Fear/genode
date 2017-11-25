@@ -1,0 +1,107 @@
+From 33a2e6c07f57c4a1c2ff17bc4e5511c49714eb0a Mon Sep 17 00:00:00 2001
+From: Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
+Date: Sat, 12 May 2018 13:53:10 +0200
+Subject: [PATCH 2/2] AM335x: move CMPER out of the kernel
+
+---
+ include/plat/am335x/plat/machine/devices.h   |  3 +--
+ include/plat/am335x/plat/machine/hardware.h  |  6 -----
+ include/plat/am335x/plat/machine/interrupt.h |  8 -------
+ src/plat/am335x/machine/hardware.c           | 24 --------------------
+ 4 files changed, 1 insertion(+), 40 deletions(-)
+
+diff --git a/include/plat/am335x/plat/machine/devices.h b/include/plat/am335x/plat/machine/devices.h
+index d8e45b68..54136e10 100644
+--- src/kernel/sel4/include/plat/am335x/plat/machine/devices.h
++++ src/kernel/sel4/include/plat/am335x/plat/machine/devices.h
+@@ -16,8 +16,7 @@
+ #define UART0_PPTR                      0xfff02000
+ #define DMTIMER0_PPTR                   0xfff03000
+ #define WDT1_PPTR                       0xfff04000
+-#define CMPER_PPTR                      0xfff05000
+-#define ARM_DEBUG_MMAPPING_PPTR         0xfff06000
++#define ARM_DEBUG_MMAPPING_PPTR         0xfff05000
+ 
+ 
+ /* Other devices on the SoC. */
+diff --git a/include/plat/am335x/plat/machine/hardware.h b/include/plat/am335x/plat/machine/hardware.h
+index 651a9296..377384bf 100644
+--- src/kernel/sel4/include/plat/am335x/plat/machine/hardware.h
++++ src/kernel/sel4/include/plat/am335x/plat/machine/hardware.h
+@@ -38,12 +38,6 @@ static const kernel_frame_t BOOT_RODATA kernel_devices[] = {
+         WDT1_PADDR,
+         WDT1_PPTR,
+         true  /* armExecuteNever */
+-    },
+-    {
+-        /*  CMPER */
+-        CMPER_PADDR,
+-        CMPER_PPTR,
+-        true  /* armExecuteNever */
+ #ifdef CONFIG_PRINTING
+     },
+     {
+diff --git a/include/plat/am335x/plat/machine/interrupt.h b/include/plat/am335x/plat/machine/interrupt.h
+index 4d125275..322ad3a5 100644
+--- src/kernel/sel4/include/plat/am335x/plat/machine/interrupt.h
++++ src/kernel/sel4/include/plat/am335x/plat/machine/interrupt.h
+@@ -20,14 +20,6 @@
+ #include <plat/machine.h>
+ #include <linker.h>
+ 
+-#define CMPER_REG(base, off) ((volatile uint32_t *)((base) + (off)))
+-#define CMPER_TIMER3_CLKCTRL    0x84
+-#define CMPER_CLKCTRL_DISABLE   0
+-#define CMPER_CLKCTRL_ENABLE    2
+-#define CMPER_CLKSEL_TIMER3     0x50c
+-#define CMPER_CKLSEL_MOSC       1
+-
+-
+ #define INTCPS_SYSCONFIG_SOFTRESET BIT(1)
+ #define INTCPS_SYSSTATUS_RESETDONE BIT(0)
+ #define INTCPS_CONTROL_NEWIRQAGR BIT(0)
+diff --git a/src/plat/am335x/machine/hardware.c b/src/plat/am335x/machine/hardware.c
+index a79d4b47..0fcd6858 100644
+--- src/kernel/sel4/src/plat/am335x/machine/hardware.c
++++ src/kernel/sel4/src/plat/am335x/machine/hardware.c
+@@ -53,29 +53,6 @@ disableWatchdog(void)
+     }
+ }
+ 
+-/*
+- * Enable DMTIMER clocks, otherwise their registers wont be accessible.
+- * This could be moved out of kernel.
+- */
+-static BOOT_CODE void
+-enableTimers(void)
+-{
+-    uint32_t cmper = CMPER_PPTR;
+-
+-    /* XXX repeat this for DMTIMER4..7 */
+-    /* select clock */
+-    *CMPER_REG(cmper, CMPER_CLKSEL_TIMER3) = CMPER_CKLSEL_MOSC;
+-    while ((*CMPER_REG(cmper, CMPER_CLKSEL_TIMER3) & 3) != CMPER_CKLSEL_MOSC) {
+-        continue;
+-    }
+-
+-    /* enable clock */
+-    *CMPER_REG(cmper, CMPER_TIMER3_CLKCTRL) = CMPER_CLKCTRL_ENABLE;
+-    while ((*CMPER_REG(cmper, CMPER_TIMER3_CLKCTRL) & 3) != CMPER_CLKCTRL_ENABLE) {
+-        continue;
+-    }
+-}
+-
+ /* Configure dmtimer0 as kernel preemption timer */
+ BOOT_CODE void
+ initTimer(void)
+@@ -83,7 +60,6 @@ initTimer(void)
+     int timeout;
+ 
+     disableWatchdog();
+-    enableTimers();
+ 
+     timer->cfg = TIOCP_CFG_SOFTRESET;
+ 
+-- 
+2.17.0
+
