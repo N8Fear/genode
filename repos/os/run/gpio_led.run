@@ -29,19 +29,19 @@ append config {
 <config>
 	<parent-provides>
 		<service name="ROM"/>
-		<service name="IRQ"/>
-		<service name="IO_MEM"/>
-		<service name="IO_PORT"/>
-		<service name="PD"/>
-		<service name="RM"/>
 		<service name="CPU"/>
+		<service name="RM"/>
+		<service name="PD"/>
+		<service name="IRQ"/>
+		<service name="IO_PORT"/>
+		<service name="IO_MEM"/>
 		<service name="LOG"/>
 	</parent-provides>
 	<default-route>
-		<any-service> <parent/> <any-child/> </any-service>
+		<any-service> <parent/> </any-service>
 	</default-route>
 	<start name="timer">
-		<resource name="RAM" quantum="1M"/>
+		<resource name="RAM" quantum="4M"/>
 		<provides><service name="Timer"/></provides>
 	</start>}
 
@@ -49,15 +49,15 @@ append config "
 	<start name=\"[gpio_drv]\">"
 
 append config {
-		<resource name="RAM" quantum="1M"/>
+		<resource name="RAM" quantum="10M"/>
 		<provides><service name="Gpio"/></provides>
 		<config>
-			<gpio num="16" mode="O" value="0"/>
+			<gpio num="81" mode="O" value="1"/>
 		</config>
 	</start>
 	<start name="led_gpio_drv">
-		<config gpio_pin="16" delay="500" times="5"/>
-		<resource name="RAM" quantum="1M"/>
+		<config gpio_pin="81" delay="500" times="5"/>
+		<resource name="RAM" quantum="10M"/>
 	</start>
 </config>}
 
