@@ -46,7 +46,7 @@ append config {
 				<service name="Terminal"/>
 			</provides>
 			<config>
-				<policy label_prefix="terminal_mux" uart="1" detect_size="yes"/> }
+				<policy label_prefix="terminal_mux" uart="1" detect_size="yes"/>
 			</config>
 			<route> <any-service> <parent/> <any-child/> </any-service> </route>
 		</start>
