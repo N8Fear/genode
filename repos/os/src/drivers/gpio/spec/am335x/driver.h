@@ -28,6 +28,8 @@
 #include "gpio.h"
 
 
+// TODO:
+// check if the clock in CM_PER needs to be enabled first 
 class Am335x_driver : public Gpio::Driver
 {
 	private:
