@@ -1,0 +1,137 @@
+From d824f9650de7505457a44047eb9bfeb73c2ee93b Mon Sep 17 00:00:00 2001
+From: Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
+Date: Mon, 21 Aug 2017 16:07:00 +0200
+Subject: [PATCH] AM335x: add more devices to dev_p_regs[]
+
+---
+ include/plat/am335x/plat/machine/devices.h  | 88 +++++++++++++++++++++++++----
+ include/plat/am335x/plat/machine/hardware.h | 14 ++++-
+ 2 files changed, 90 insertions(+), 12 deletions(-)
+
+diff --git a/include/plat/am335x/plat/machine/devices.h b/include/plat/am335x/plat/machine/devices.h
+index a74f3f8a..8502cde2 100644
+--- src/kernel/sel4/include/plat/am335x/plat/machine/devices.h
++++ src/kernel/sel4/include/plat/am335x/plat/machine/devices.h
+@@ -21,17 +21,83 @@
+ 
+ 
+ /* Other devices on the SoC. */
+-#define INTC_PADDR      0x48200000
+-#define UART0_PADDR     0x44E09000
+-#define DMTIMER0_PADDR  0x44E05000
+-#define DMTIMER2_PADDR  0x48040000
+-#define DMTIMER3_PADDR  0x48042000
+-#define DMTIMER4_PADDR  0x48044000
+-#define DMTIMER5_PADDR  0x48046000
+-#define DMTIMER6_PADDR  0x48048000
+-#define DMTIMER7_PADDR  0x4804A000
+-#define WDT1_PADDR      0x44e35000
+-#define CMPER_PADDR     0x44e00000
++#define CMPER_PADDR           0x44E00000   /*   1 kB */
++#define CM_WKUP_PADDR         0x44E00400   /*  256 B */
++#define CM_DPLL_PADDR         0x44E00500   /*  256 B */
++#define CM_MPU_PADDR          0x44E00600   /*  256 B */
++#define CM_DEVICE_PADDR       0x44E00700   /*  256 B */
++#define CM_RTC_PADDR          0x44E00800   /*  256 B */
++#define CM_GFX_PADDR          0x44E00900   /*  256 B */
++#define CM_CEFUSE_PADDR       0x44E00A00   /*  256 B */
++#define PRM_IRQ_PADDR         0x44E00B00   /*  256 B */
++#define PRM_PER_PADDR         0x44E00C00   /*  256 B */
++#define PRM_WKUP_PADDR        0x44E00D00   /*  256 B */
++#define PRM_MPU_PADDR         0x44E00E00   /*  256 B */
++#define PRM_DEV_PADDR         0x44E00F00   /*  256 B */
++#define PRM_RTC_PADDR         0x44E01000   /*  256 B */
++#define PRM_GFX_PADDR         0x44E01100   /*  256 B */
++#define PRM_CEFUSE_PADDR      0x44E01200   /*  256 B */
++#define RESERVED_PADDR1       0x44E03000   /*   4 kB */
++#define RESERVED_PADDR2       0x44E04000   /*   4 kB */
++#define DMTIMER0_PADDR        0x44E05000   /*   4 kB */
++#define GPIO0_PADDR           0x44E07000   /*   4 kB */
++#define UART0_PADDR           0x44E09000   /*   4 kB */
++#define I2C0_PADDR            0x44E0B000   /*   4 kB */
++#define ADC_TSC_PADDR         0x44E0D000   /*   4 kB */
++#define CONTROL_MODULE_PADDR  0x44E10000   /* 128 kB s */
++#define DDR2_3_mDDR_PHY_PADDR 0x44E12000   /* 128 kB s */
++#define RESERVED1             0x44E12400   /*   4 kB */
++#define DMTIMER1_1MS_PADDR    0x44E31000   /*   4 kB */
++#define RESERVED2             0x44E13000   /*   4 kB */
++#define RESERVED3             0x44E14000   /*   4 kB */
++#define WDT1_PADDR            0x44E35000   /*   4 kB */
++#define RTCSS_PADDR           0x44E3E000   /*   4 kB */
++#define UART1_PADDR           0x48022000   /*   4 kB */
++#define UART2_PADDR           0x48024000   /*   4 kB */
++#define I2C1_PADDR            0x4802AFFF   /*   4 kB */
++#define MCSPI0_PADDR          0x48030000   /*   4 kB */
++#define McASP0_CFG_PADDR      0x48038000   /*   8 kB */
++#define McASP1_CFG_PADDR      0x4803C000   /*   8 kB */
++#define DMTIMER2_PADDR        0x48040000   /*   4 kB */
++#define DMTIMER3_PADDR        0x48042000   /*   4 kB */
++#define DMTIMER4_PADDR        0x48044000   /*   4 kB */
++#define DMTIMER5_PADDR        0x48046000   /*   4 kB */
++#define DMTIMER6_PADDR        0x48048000   /*   4 kB */
++#define DMTIMER7_PADDR        0x4804A000   /*   4 kB */
++#define GPIO1_PADDR           0x4804C000   /*   4 kB */
++#define MMCHS0_PADDR          0x48060000   /*   4 kB */
++#define ELM_PADDR             0x48080000   /*  64 kB */
++#define MAILBOX_0_PADDR       0x480C8000   /*   4 kB */
++#define SPINLOCK_PADDR        0x480CA000   /*   4 kB */
++#define OCP_WATCHPOINT_PADDR  0x4818C000   /*   4 kB */
++#define I2C2_PADDR            0x4819C000   /*   4 kB */
++#define MCSPI1_PADDR          0x481A0000   /*   4 kB */
++#define UART3_PADDR           0x481A6000   /*   4 kB */
++#define UART4_PADDR           0x481A8000   /*   4 kB */
++#define UART5_PADDR           0x481AA000   /*   4 kB */
++#define GPIO2_PADDR           0x481AC000   /*   4 kB */
++#define GPIO3_PADDR           0x481AE000   /*   4 kB */
++#define RESERVED_PADDR3       0x481B0000   /*   4 kB */
++#define DCAN0_PADDR           0x481CC000   /*   8 kB */
++#define DCAN1_PADDR           0x481D0000   /*   8 kB */
++#define MMC1_PADDR            0x481D8000   /*   4 kB */
++#define INTC_PADDR            0x48200000   /*   4 kB */
+ 
++/* PWM missing */
++/* LCD MISSING */
++/* Network subsystem CPSW */
++#define CPSW_SS_PADDR         0x4A100000   /*  32 kB */
++#define CPSW_PORT_PADDR       0x4A101000   /* 1792   */
++#define CPSW_CPDMA_PADDR      0x4A100800   /*  256   */
++#define CPSW_STATS_PADDR      0x4A100900   /*  256   */
++#define CPSW_STATERAM_PADDR   0x4A100A00   /*  512   */
++#define CPSW_CPTS_PADDR       0x4A100C00   /*  512   */
++#define CPSW_ALE_PADDR        0x4A100D00   /*  128   */
++#define CPSW_SL1_PADDR        0x4A100D80   /*   64   */
++#define CPSW_SL2_PADDR        0x4A100DC0   /*   64   */
++#define MDIO_PADDR            0x4A101000   /*  256   */
++#define CPSW_WR_PADDR         0x4A101200   /* 3584   */
++#define CPPI_RAM_PADDR        0x4A102000   /* 8192   */
++#define PRU_ICSS_PADDR        0x4A300000   /* 512 KB */
+ 
+ #endif
+diff --git a/include/plat/am335x/plat/machine/hardware.h b/include/plat/am335x/plat/machine/hardware.h
+index 1263726b..192a07a7 100644
+--- src/kernel/sel4/include/plat/am335x/plat/machine/hardware.h
++++ src/kernel/sel4/include/plat/am335x/plat/machine/hardware.h
+@@ -70,7 +70,19 @@ static const p_region_t BOOT_RODATA avail_p_regs[] = {
+ 
+ static const p_region_t BOOT_RODATA dev_p_regs[] = {
+     /* SoC devices: */
+-    { /* .start = */ UART0_PADDR,    /* .end = */ UART0_PADDR + (1 << PAGE_BITS) },
++    { /* .start = */ UART0_PADDR,    /* .end = */ UART0_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ UART1_PADDR,    /* .end = */ UART1_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ UART2_PADDR,    /* .end = */ UART2_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ UART3_PADDR,    /* .end = */ UART3_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ UART4_PADDR,    /* .end = */ UART4_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ UART5_PADDR,    /* .end = */ UART5_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ GPIO0_PADDR,    /* .end = */ GPIO0_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ GPIO1_PADDR,    /* .end = */ GPIO1_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ GPIO2_PADDR,    /* .end = */ GPIO2_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ GPIO3_PADDR,    /* .end = */ GPIO3_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ MMCHS0_PADDR,    /* .end = */ MMCHS0_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ MMC1_PADDR,    /* .end = */ MMC1_PADDR    + (1 << PAGE_BITS) },
++    { /* .start = */ DMTIMER1_1MS_PADDR, /* .end = */ DMTIMER1_1MS_PADDR + (1 << PAGE_BITS) },
+     { /* .start = */ DMTIMER2_PADDR, /* .end = */ DMTIMER2_PADDR + (1 << PAGE_BITS) },
+     { /* .start = */ DMTIMER3_PADDR, /* .end = */ DMTIMER3_PADDR + (1 << PAGE_BITS) },
+     { /* .start = */ DMTIMER4_PADDR, /* .end = */ DMTIMER4_PADDR + (1 << PAGE_BITS) },
+-- 
+2.14.1
+
