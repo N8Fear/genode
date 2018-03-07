@@ -1,0 +1,2 @@
+KERNEL ?= sel4
+RUN_OPT += --include image/uboot --image-uboot-no-gzip
