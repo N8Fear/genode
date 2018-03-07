@@ -38,15 +38,15 @@ void Timer::Time_source::schedule_timeout(Microseconds     duration,
 	 * due to wraps when value is chosen too small. Send instead a signal
 	 * manually at end of this method.
 	 */
-//	unsigned const tics = _dmtimer.us_to_tics(duration.value ? duration.value
-//	                                                      : max_timeout().value);
+	unsigned const tics = _dmtimer.us_to_tics(duration.value ? duration.value
+	                                                      : max_timeout().value);
 
 	_handler = &handler;
 
-//	_timer_irq.ack_irq();
+	_timer_irq.ack_irq();
 
-//	_dmtimer.start_one_shot(tics);
-//
+	_dmtimer.start_one_shot(tics);
+
 
 	/* trigger for a timeout 0 immediately the signal */
 	if (!duration.value)
@@ -58,16 +58,16 @@ Duration Timer::Time_source::curr_time()
 {
 	/* read dmtimer status */
 	bool           wrapped   = false;
-//	unsigned const max_value = _dmtimer.current_max_value();
-//	unsigned const tic_value = _dmtimer.value(wrapped);
+	unsigned const max_value = _dmtimer.current_max_value();
+	unsigned const tic_value = _dmtimer.value(wrapped);
 	unsigned       passed_tics = 0;
 
-//	if (wrapped)
-//		passed_tics += max_value;
+	if (wrapped)
+		passed_tics += max_value;
 
-//	passed_tics += max_value - tic_value;
+	passed_tics += max_value - tic_value;
 
-//	return Duration(Microseconds(_curr_time_us + _dmtimer.tics_to_us(passed_tics)));
+	return Duration(Microseconds(_curr_time_us + _dmtimer.tics_to_us(passed_tics)));
 }
 
 Timer::Time_source::Time_source(Env &env)
