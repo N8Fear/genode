@@ -5,5 +5,8 @@
     "target-pointer-width": "64",
     "arch": "x86_64",
     "os": "genode",
-    "no_compiler_rt": true
+    "no_compiler_rt": true,
+		"linker-flavor": "ld",
+		"target-c-int-width": "64",
+		"data-layout": "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 }
