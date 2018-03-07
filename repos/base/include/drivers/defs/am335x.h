@@ -1,11 +1,11 @@
 /*
  * \brief  MMIO and IRQ definitions for AM335x based boards
  * \author Hinnerk van Bruinehsen
- * \date   2017-08-07
+ * \date   2018-03-05
  */
 
 /*
- * Copyright (C) 2013-2017 Genode Labs GmbH
+ * Copyright (C) 2013-2018 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
  * under the terms of the GNU Affero General Public License version 3.

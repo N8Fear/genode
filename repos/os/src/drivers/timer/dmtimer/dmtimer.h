@@ -302,6 +302,29 @@ class Genode::Dmtimer_base : public Mmio
 					PORGPOCFG_DRIVES_1_TIMER_PIN_INPUT  = 1,
 				};
 			};
+
+			/**
+			* Register value that configures the timer for a one-shot run
+			*
+			*/
+			//static access_t prepare_one_shot()
+			static int prepare_one_shot()
+			{
+			return ar::ONE_SHOT;
+			//		return En::bits(0) |
+			//		       En_mod::bits(En_mod::RELOAD) |
+			//		       Oci_en::bits(1) |
+			//		       Rld::bits(Rld::RELOAD_FROM_LR) |
+			//		       Prescaler::bits(Prescaler::DIVIDE_BY_1) |
+			//		       Swr::bits(0) |
+			//		       Iovw::bits(0) |
+			//		       Dbg_en::bits(0) |
+			//		       Wait_en::bits(0) |
+			//		       Doz_en::bits(0) |
+			//		       Stop_en::bits(0) |
+			//		       Om::bits(Om::DISCONNECTED) |
+			//		       Clk_src::bits(Clk_src::HIGH_FREQ_REF_CLK);
+	    };
 		};
 
 		/* This register holds the value of the internal counter */
@@ -368,26 +391,6 @@ class Genode::Dmtimer_base : public Mmio
 		/* This register holds the value of the second counter register capture */
 		struct tcar2 : Register<0x44,32> { };
 
-		/**
-		 * Register value that configures the timer for a one-shot run
-		 */
-	//static access_t prepare_one_shot()
-	//{
-	//		return En::bits(0) |
-	//		       En_mod::bits(En_mod::RELOAD) |
-	//		       Oci_en::bits(1) |
-	//		       Rld::bits(Rld::RELOAD_FROM_LR) |
-	//		       Prescaler::bits(Prescaler::DIVIDE_BY_1) |
-	//		       Swr::bits(0) |
-	//		       Iovw::bits(0) |
-	//		       Dbg_en::bits(0) |
-	//		       Wait_en::bits(0) |
-	//		       Doz_en::bits(0) |
-	//		       Stop_en::bits(0) |
-	//		       Om::bits(Om::DISCONNECTED) |
-	//		       Clk_src::bits(Clk_src::HIGH_FREQ_REF_CLK);
-	//	}
-	//};
 
 	/**
 	 * Status register
@@ -407,10 +410,10 @@ class Genode::Dmtimer_base : public Mmio
 	void _reset()
 	{
 		/* wait until ongoing reset operations are finished */
-//			while (read<Cr::Swr>()) ;
+			while (read<tiocp_cfg::softreset>()) ;
 
 		/* disable timer */
-//			write<Cr::En>(0);
+			write<tclr::st>(tclr::st::STOP_TIMER);
 
 		/* clear interrupt */
 //			write<Sr::Ocif>(1);
@@ -422,12 +425,12 @@ class Genode::Dmtimer_base : public Mmio
 		_reset();
 
 		/* configure timer for a one-shot */
-//			write<Cr>(Cr::prepare_one_shot());
+			write<tclr>(tclr::prepare_one_shot());
 //			write<Lr>(tics);
 //			write<Cmpr>(0);
 
 		/* start timer */
-//			write<Cr::En>(1);
+			write<tclr::st>(tclr::st::START_TIMER);
 	}
 
 	public:
@@ -455,7 +458,7 @@ class Genode::Dmtimer_base : public Mmio
 		unsigned stop_one_shot(bool &wrap)
 		{
 			/* disable timer */
-//			write<Cr::En>(0);
+			write<tclr::st>(tclr::st::STOP_TIMER);
 			return value(wrap);
 		}
 
