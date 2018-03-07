@@ -31,6 +31,7 @@ append config {
 			<service name="IO_PORT"/>
 			<service name="IO_MEM"/>
 		</parent-provides>
+		<default caps="500"/>
 		<default-route>
 			<any-service> <any-child/> <parent/> </any-service>
 		</default-route>
@@ -76,7 +77,7 @@ append config {
 					<dir name="subsystems">
 						<inline name="noux.subsystem">
 							<subsystem name="noux" help="VIM executed in the noux runtime">
-								<resource name="RAM" quantum="16M" />
+								<resource name="RAM" quantum="16M" caps="400" />
 								<config>
 									<fstab> <tar name="vim.tar" /> </fstab>
 									<start name="/bin/vim">
@@ -153,7 +154,7 @@ append qemu_args " -nographic "
 # On all kernels, we write the core debug output to the kdb.log file,
 # and use qemu's stdio as the UART used by terminal_mux.
 #
-append qemu_args " -serial file:kdb.log "
 append qemu_args " -serial mon:stdio"
+append qemu_args " -serial pty "
 
 run_genode_until forever
