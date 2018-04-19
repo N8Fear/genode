@@ -1,11 +1,23 @@
+From 4d8fde1dadc69f0ed1c1a297f9fcdb2356dc7020 Mon Sep 17 00:00:00 2001
+From: Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
+Date: Mon, 21 Aug 2017 16:07:00 +0200
+Subject: [PATCH] AM335x: add more devices to dev_p_regs[] and add IRQ defs
+
+---
+ include/plat/am335x/plat/machine.h          | 40 +++++++++-
+ include/plat/am335x/plat/machine/devices.h  | 88 +++++++++++++++++----
+ include/plat/am335x/plat/machine/hardware.h | 43 +++++++---
+ 3 files changed, 144 insertions(+), 27 deletions(-)
+
 diff --git a/include/plat/am335x/plat/machine.h b/include/plat/am335x/plat/machine.h
-index 1e445d38..8c8ccea8 100644
+index ec0f2859..ef4bca06 100644
 --- src/kernel/sel4/include/plat/am335x/plat/machine.h
 +++ src/kernel/sel4/include/plat/am335x/plat/machine.h
-@@ -14,7 +14,47 @@
+@@ -14,9 +14,47 @@
  #define N_INTERRUPTS 128
  
  enum IRQConstants {
+-    DMTIMER0_IRQ = 66,
 +    USB_SS_INT = 17,
 +    USB_INT0 = 18,
 +    USB_INT1 = 19,
@@ -16,15 +28,15 @@ index 1e445d38..8c8ccea8 100644
 +    USB_WAKEUP = 34,
 +    LCDC_INT = 36,
 +    SYS_INT_3PGSWRXTHR0 = 40,
-+    SYS_INT_3PGSWRXINT0 = 41,
-+    SYS_INT_3PGSWTXINT0 = 42,
+     SYS_INT_3PGSWRXINT0 = 41,
+     SYS_INT_3PGSWTXINT0 = 42,
 +    UART3_INT = 44,
 +    UART4_INT = 45,
 +    UART5_INT = 46,
 +    GPIO_INT3_A = 62,
 +    GPIO_INT3_B = 63,
 +    MMC_SD0_INT =64,
-     DMTIMER0_IRQ = 66,
++    DMTIMER0_IRQ = 66,
 +    DMTIMER1_1MS_IRQ = 67,
 +    DMTIMER2_IRQ = 68,
 +    DMTIMER3_IRQ = 69,
@@ -51,10 +63,10 @@ index 1e445d38..8c8ccea8 100644
  } platform_interrupt_t;
  
 diff --git a/include/plat/am335x/plat/machine/devices.h b/include/plat/am335x/plat/machine/devices.h
-index a74f3f8a..d8e45b68 100644
+index fc7946fe..d8e45b68 100644
 --- src/kernel/sel4/include/plat/am335x/plat/machine/devices.h
 +++ src/kernel/sel4/include/plat/am335x/plat/machine/devices.h
-@@ -21,17 +21,79 @@
+@@ -21,19 +21,79 @@
  
  
  /* Other devices on the SoC. */
@@ -69,8 +81,11 @@ index a74f3f8a..d8e45b68 100644
 -#define DMTIMER7_PADDR  0x4804A000
 -#define WDT1_PADDR      0x44e35000
 -#define CMPER_PADDR     0x44e00000
+-#define CTRL_PADDR      0x44E10000
+-#define PRCM_PADDR      0x44E00000
+-#define CPSW_PADDR      0x4A100000
 +#define PRCM_PADDR            0x44E00000
- 
++
 +#define CMPER_PADDR           0x44E00000   /*   1 kB */
 +#define CM_WKUP_PADDR         0x44E00400   /*  256 B */
 +#define CM_DPLL_PADDR         0x44E00500   /*  256 B */
@@ -146,10 +161,10 @@ index a74f3f8a..d8e45b68 100644
  
  #endif
 diff --git a/include/plat/am335x/plat/machine/hardware.h b/include/plat/am335x/plat/machine/hardware.h
-index 1263726b..bbec1d49 100644
+index 836fd01a..bbec1d49 100644
 --- src/kernel/sel4/include/plat/am335x/plat/machine/hardware.h
 +++ src/kernel/sel4/include/plat/am335x/plat/machine/hardware.h
-@@ -70,15 +70,37 @@ static const p_region_t BOOT_RODATA avail_p_regs[] = {
+@@ -70,18 +70,37 @@ static const p_region_t BOOT_RODATA avail_p_regs[] = {
  
  static const p_region_t BOOT_RODATA dev_p_regs[] = {
      /* SoC devices: */
@@ -162,6 +177,9 @@ index 1263726b..bbec1d49 100644
 -    { /* .start = */ DMTIMER7_PADDR, /* .end = */ DMTIMER7_PADDR + (1 << PAGE_BITS) },
 -    { /* .start = */ WDT1_PADDR,     /* .end = */ WDT1_PADDR + (1 << PAGE_BITS) },
 -    { /* .start = */ CMPER_PADDR,    /* .end = */ CMPER_PADDR + (1 << PAGE_BITS) },
+-    { /* .start = */ CTRL_PADDR,     /* .end = */ CTRL_PADDR + (1 << PAGE_BITS) },
+-    { /* .start = */ PRCM_PADDR,     /* .end = */ PRCM_PADDR + (1 << PAGE_BITS) },
+-    { /* .start = */ CPSW_PADDR,     /* .end = */ CPSW_PADDR + (1 << (PAGE_BITS + 4)) }
 +    { /* .start = */ UART0_PADDR,    /* .end = */ UART0_PADDR     + (1 << PAGE_BITS) },
 +    { /* .start = */ UART1_PADDR,    /* .end = */ UART1_PADDR     + (1 << PAGE_BITS) },
 +    { /* .start = */ UART2_PADDR,    /* .end = */ UART2_PADDR     + (1 << PAGE_BITS) },
@@ -196,3 +214,6 @@ index 1263726b..bbec1d49 100644
      /* Board devices. */
      /* TODO: This should ultimately be replaced with a more general solution. */
  };
+-- 
+2.17.0
+
