@@ -1,11 +1,11 @@
 /*
  * \brief  Driver for AM335x UARTs
  * \author Hinnerk van Bruinehsen
- * \date   2017-08-10
+ * \date   2018-05-11
  */
 
 /*
- * Copyright (C) 2013-2017 Genode Labs GmbH
+ * Copyright (C) 2013-2018 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
  * under the terms of the GNU Affero General Public License version 3.
@@ -18,6 +18,7 @@
 #include <base/attached_io_mem_dataspace.h>
 #include <base/env.h>
 #include <drivers/uart/am335x.h>
+#include <drivers/defs/am335x.h>
 
 enum { UARTS_NUM = 6 }; /* needed by base class definitions */
 
@@ -26,8 +27,8 @@ enum { UARTS_NUM = 6 }; /* needed by base class definitions */
 
 
 class Uart::Driver : public Genode::Attached_io_mem_dataspace,
-//                     public Genode::Exynos_uart,
-                     public Uart::Driver_base
+                     public Genode::AM335x_uart,
+                     public  Uart::Driver_base
 {
 	private:
 
@@ -48,8 +49,13 @@ class Uart::Driver : public Genode::Attached_io_mem_dataspace,
 				 * temporary workaround having first UART twice
 				 * (most run-scripts have first UART reserved for the kernel)
 				 */
-//				{ Exynos5::UART_2_MMIO_BASE, 4096, Exynos5::UART_2_IRQ },
-//				{ Exynos5::UART_2_MMIO_BASE, 4096, Exynos5::UART_2_IRQ },
+				{ Am335x::UART_0_BASE, 4096, Am335x::UART_0_INT },
+				{ Am335x::UART_0_BASE, 4096, Am335x::UART_0_INT },
+				{ Am335x::UART_1_BASE, 4096, Am335x::UART_1_INT },
+				{ Am335x::UART_2_BASE, 4096, Am335x::UART_2_INT },
+				{ Am335x::UART_3_BASE, 4096, Am335x::UART_3_INT },
+				{ Am335x::UART_4_BASE, 4096, Am335x::UART_4_INT },
+				//{ Am335x::UART_5_BASE, 4096, Am335x::UART_5_INT },
 			};
 			return cfg[index];
 		}
@@ -68,19 +74,19 @@ class Uart::Driver : public Genode::Attached_io_mem_dataspace,
 		       unsigned baud_rate, Char_avail_functor &func)
 		: Genode::Attached_io_mem_dataspace(env, _config(index).mmio_base,
 		                                     _config(index).mmio_size),
-//		  Exynos_uart((Genode::addr_t)local_addr<void>(),
-//		              Arndale::UART_2_CLOCK, _baud_rate(baud_rate)),
+		  AM335x_uart(env, (Genode::addr_t)local_addr<void>(),
+		              Am335x::UART_1_CLOCK, _baud_rate(baud_rate)),
 		  Driver_base(env, _config(index).irq_number, func) {
-			/* _rx_enable(); */ }
+			_rx_enable(); }
 
 
 		/***************************
 		 ** UART driver interface **
 		 ***************************/
 
-		void put_char(char c) override { /*Exynos_uart::put_char(c);*/ }
-		bool char_avail()     override { /* return _rx_avail();*/ }
-		char get_char()       override { /* return _rx_char(); */ }
+		void put_char(char c) override { AM335x_uart::put_char(c); }
+		bool char_avail()     override { return _rx_avail(); }
+		char get_char()       override { return _rx_char();  }
 };
 
 #endif /* _UART_DRIVER_H_ */
