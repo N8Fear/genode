@@ -16,6 +16,7 @@
 
 /* Genode includes */
 #include <util/mmio.h>
+#include <drivers/defs/am335x.h>
 
 namespace Genode { class AM335x_uart; }
 
@@ -1600,12 +1601,14 @@ class Genode::AM335x_uart: Mmio {
 //			             Uintp::Error::bits(1) |
 //			             Uintp::Txd::bits(1) |
 //			             Uintp::Modem::bits(1));
+			Genode::log("_rx_enable not implemented");
 		}
 
 		bool _rx_avail()
 		{
 //			return (read<Ufstat>() & (Ufstat::Rx_fifo_count::bits(0xff)
 //			        | Ufstat::Rx_fifo_full::bits(1))); }
+			Genode::log("_rx_avail not implemented");
 		}
 
 		/**
@@ -1619,6 +1622,8 @@ class Genode::AM335x_uart: Mmio {
 //			/* clear pending RX IRQ */
 //			write<Uintp>(Uintp::Rxd::bits(1));
 //			return c;
+			Genode::log("_rx_char not implemented");
+			return 'x';
 		}
 
 	public:
@@ -1630,26 +1635,31 @@ class Genode::AM335x_uart: Mmio {
 		 * \param  clock      reference clock
 		 * \param  baud_rate  targeted baud rate
 		 */
-		AM335x_uart(addr_t const base, unsigned const clock,
+		AM335x_uart(Genode::Env &env, addr_t const base, unsigned const clock,
 		            unsigned const baud_rate) : Mmio(base)
 		{
-//			/* RX and TX FIFO reset */
+			Genode::Cmper(env, Am335x::CM_PER_BASE,Am335x::CM_PER_SIZE).enable_uart_clock();
+			Genode::Cmper(env, Am335x::CM_PER_BASE,Am335x::CM_PER_SIZE).enable_cpsw_clock();
+
+				//cmper.enable_uart_clock();
+			/* RX and TX FIFO reset */
 //			write<Ufcon::Rx_fifo_rst>(1);
 //			write<Ufcon::Tx_fifo_rst>(1);
 //			while (read<Ufcon::Rx_fifo_rst>() || read<Ufcon::Tx_fifo_rst>()) ;
 //
-//			/* init control registers */
+			/* init control registers */
 //			write<Ulcon>(Ulcon::init_value());
 //			write<Ucon>(Ucon::init_value());
 //			write<Umcon>(Umcon::init_value());
 //
-//			/* apply baud rate */
+			/* apply baud rate */
 //			float const div_val = ((float)clock / (baud_rate * 16)) - 1;
 //			Ubrdiv::access_t const ubrdiv = div_val;
 //			Ufracval::access_t const ufracval =
 //				((float)div_val - ubrdiv) * 16;
 //			write<Ubrdiv::Baud_rate_div>(ubrdiv);
 //			write<Ufracval::Baud_rate_frac>(ufracval);
+			Genode::log("AM335x_uart contructor not implemented");
 		}
 
 		/**
@@ -1657,8 +1667,8 @@ class Genode::AM335x_uart: Mmio {
 		 */
 		void put_char(char const c)
 		{
-//			while (read<Ufstat::Tx_fifo_full>()) ;
-//			write<Utxh::Transmit_data>(c);
+			while (read<lsr_uart::txsre>()) ;
+			write<thr::_thr>(c);
 		}
 };
 
