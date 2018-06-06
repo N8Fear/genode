@@ -1,82 +1,55 @@
-/*
- * \brief  Time source that uses AM335x's DMTIMER
- * \author Hinnek van Bruinehsen
- * \date   2017-08-04
+/**
+ * \brief  Time source that uses DMTIMER2 from the AM335x
+ * \author Hinnerk van Bruinehsen
+ * \date   2018-03-27
  */
 
 /*
- * Copyright (C) 2009-2017 Genode Labs GmbH
+ * Copyright (C) 2009-2018 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
  * under the terms of the GNU Affero General Public License version 3.
  */
 
-/* base include */
-#include <drivers/defs/am335x.h>
-
 /* local includes */
+
 #include <time_source.h>
 
 using namespace Genode;
 
 
-Microseconds Timer::Time_source::max_timeout()
-const {
-	return Microseconds(_dmtimer.tics_to_us(~0U));
-}
-
-
-void Timer::Time_source::schedule_timeout(Microseconds     duration,
-                                          Timeout_handler &handler)
+void Timer::Time_source::schedule_timeout(Genode::Microseconds  duration,
+                                          Timeout_handler      &handler)
 {
-	/* make swift current time steady */
-	Duration const time = curr_time();
-	_curr_time_us = time.trunc_to_plain_us().value;
-
-	/*
-	 * Program max timeout in case of duration 0 to avoid lost of accuracy
-	 * due to wraps when value is chosen too small. Send instead a signal
-	 * manually at end of this method.
-	 */
-	unsigned const tics = _dmtimer.us_to_tics(duration.value ? duration.value
-	                                                      : max_timeout().value);
-
+	unsigned long const ticks = (1ULL * duration.value * TICKS_PER_MS) / 1000;
 	_handler = &handler;
-
 	_timer_irq.ack_irq();
+	_cleared_ticks = 0;
 
-	_dmtimer.start_one_shot(tics);
+	/* disable timer */
+	write<tclr::st>(tclr::st::STOP_TIMER);
 
+	/* clear interrupt and install timeout */
+	write<irqstatus::mat_it_flag>(1);
+	write<tclr>(tclr::prepare_one_shot());
+	write<tmar>(0x123); // just testing
+	write<tmar>(tcrr::MAX - ticks);
+	write<irq_enable_set::mat_en_flag>(irq_enable_set::mat_en_flag::IRQ_ENABLE);
 
-	/* trigger for a timeout 0 immediately the signal */
-	if (!duration.value)
-		Signal_transmitter(_signal_handler).submit();
+	/* start timer */
+	write<tclr::st>(tclr::st::START_TIMER);
 }
 
 
 Duration Timer::Time_source::curr_time()
 {
-	/* read dmtimer status */
-	bool           wrapped   = false;
-	unsigned const max_value = _dmtimer.current_max_value();
-	unsigned const tic_value = _dmtimer.value(wrapped);
-	unsigned       passed_tics = 0;
+	unsigned long const uncleared_ticks = tcrr::MAX - read<tcrr>() - _cleared_ticks;
+	unsigned long const uncleared_us    = timer_ticks_to_us(uncleared_ticks, TICKS_PER_MS);
 
-	if (wrapped)
-		passed_tics += max_value;
-
-	passed_tics += max_value - tic_value;
-
-	return Duration(Microseconds(_curr_time_us + _dmtimer.tics_to_us(passed_tics)));
+	/* update time only on IRQs and if rate is under 1000 per second */
+	if (_irq || uncleared_us > 1000) {
+		_curr_time.add(Genode::Microseconds(uncleared_us));
+		_cleared_ticks += uncleared_ticks;
+	}
+	return _curr_time;
 }
-
-Timer::Time_source::Time_source(Env &env)
-:
-        Signalled_time_source(env),
-        _io_mem(env, Am335x::DMTIMER_1_BASE , Am335x::DMTIMER_1_SIZE),
-        _timer_irq(env, Am335x::T_INT_1_1MS),
-        _dmtimer(reinterpret_cast<addr_t>(_io_mem.local_addr<addr_t>()))
-{
-	_timer_irq.sigh(_signal_handler);
-}
-
