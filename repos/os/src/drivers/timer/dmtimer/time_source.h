@@ -1,11 +1,11 @@
 /*
- * \brief  Time source that uses the AM335x DMTIMER
+ * \brief  Time source that uses DMTIMER2 from the AM335x
  * \author Hinnerk van Bruinehsen
- * \date   2017-08-04
+ * \date   2018-03-27
  */
 
 /*
- * Copyright (C) 2009-2017 Genode Labs GmbH
+ * Copyright (C) 2009-2018 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
  * under the terms of the GNU Affero General Public License version 3.
@@ -15,31 +15,88 @@
 #define _TIME_SOURCE_H_
 
 /* Genode includes */
-#include <base/attached_io_mem_dataspace.h>
 #include <irq_session/connection.h>
-#include <os/duration.h>
+#include <os/attached_mmio.h>
+#include <drivers/timer/util.h>
 
 /* local includes */
 #include <signalled_time_source.h>
 
-#include "dmtimer.h"
-
-namespace Timer {
-
-	using Microseconds = Genode::Microseconds;
-	using Duration     = Genode::Duration;
-	class Time_source;
-}
+namespace Timer { class Time_source; }
 
 
-class Timer::Time_source : public Genode::Signalled_time_source
+class Timer::Time_source : private Genode::Attached_mmio,
+                           public Genode::Signalled_time_source
 {
 	private:
 
-		Genode::Attached_io_mem_dataspace _io_mem;
-		Genode::Irq_connection            _timer_irq;
-		Genode::Dmtimer_base							_dmtimer;
-		unsigned long long mutable        _curr_time_us { 0 };
+		enum { TICKS_PER_MS = 25000 };
+
+		struct tiocp_cfg : Register<0x10,32>
+		{
+			struct softreset : Bitfield<0,1>
+			{
+				enum {
+					NO_ACTION = 0,
+					RESET_ONGOING = 1,
+				};
+			};
+
+		};
+
+		struct irqstatus : Register<0x28,32>
+		{
+			struct mat_it_flag : Bitfield<0,1> {
+				enum { NO_IRQ = 0, IRQ = 1, };
+			};
+		};
+
+		struct irq_enable_set : Register<0x2c,32>
+		{
+			struct mat_en_flag : Bitfield<0,1>
+			{
+				enum { IRQ_DISABLE = 0, IRQ_ENABLE =1, };
+			};
+		};
+
+		struct tclr : Register<0x38,32>
+		{
+			struct st : Bitfield<0,1>
+			{
+				enum { STOP_TIMER =0, START_TIMER = 1, };
+			};
+
+			struct ar : Bitfield<1,1>
+			{
+				enum { ONE_SHOT = 0, AUTORELOAD = 1, };
+			};
+
+			struct ce : Bitfield<6,1>
+			{
+				enum { COMPARE_MODE_DISABLED = 0, COMPARE_MODE_ENABLED =1, };
+			};
+			static access_t prepare_one_shot()
+			{
+				access_t tclr_start = 0;
+				ar::set(tclr_start, ar::ONE_SHOT);
+				ce::set(tclr_start, ce::COMPARE_MODE_ENABLED);
+				// TODO: has to be set in other function
+				//irq_enable::mat_en_flag::set(irq_enable, irq_enable::mat_en_flag::IRQ_ENABLE);
+		//		Clk_src::set(cr, Clk_src::HIGH_FREQ_REF_CLK);
+
+				Genode::warning("prepare_one_shot returns...");
+				return tclr_start;
+			}
+
+		};
+
+		struct tmar : Register<0x4c,32> { };
+		struct tcrr : Register<0x3c,32> { enum { MAX = ~(access_t) 0 }; };
+
+		Genode::Irq_connection     _timer_irq;
+		Genode::Duration           _curr_time     { Genode::Microseconds(0) };
+		Genode::Microseconds const _max_timeout   { Genode::timer_ticks_to_us(tcrr::MAX / 2, TICKS_PER_MS) };
+		unsigned long              _cleared_ticks { 0 };
 
 	public:
 
@@ -50,9 +107,9 @@ class Timer::Time_source : public Genode::Signalled_time_source
 		 ** Genode::Time_source **
 		 *************************/
 
-		Duration curr_time() override;
-		void schedule_timeout(Microseconds duration, Timeout_handler &handler) override;
-		Microseconds max_timeout() const override;
+		Genode::Duration curr_time() override;
+		void schedule_timeout(Genode::Microseconds duration, Timeout_handler &handler) override;
+		Genode::Microseconds max_timeout() const override { return _max_timeout; };
 };
 
 #endif /* _TIME_SOURCE_H_ */
