@@ -22,11 +22,11 @@
 // TODO: remove when finished:
 #include<base/log.h>
 
-namespace Genode {class Cmper; }
+namespace Genode {class Cmper; class Cmdpll;}
 
 class Genode::Cmper : Genode::Attached_io_mem_dataspace, public Mmio
 {
- private:
+private:
 
 //	 struct Cmper {
 //		 Genode::addr_t mmio_base;
@@ -414,37 +414,116 @@ class Genode::Cmper : Genode::Attached_io_mem_dataspace, public Mmio
 		struct clktrctrl : Bitfield<0,2> {};
 		struct clkactivity_clk_24mhz_gclk : Bitfield<4,1> {};
 	};
- public:
-	void enable_uart_clock() {
-		Genode::log("Enable UART clock...");
-		write<cm_per_uart1_clkctrl::modulemode>(2);
-		while(read<cm_per_uart1_clkctrl::modulemode>() != 2);
-		while(!(read<cm_per_l4ls_clkstctrl::clkactivity_l4ls_gclk>() == 1
-            && read<cm_per_l4ls_clkstctrl::clkactivity_uart_gfclk>() == 1 ));
-		Genode::log("UART clocks in CM_PER enabled.");
-	};
+	public:
+		void enable_uart_clock()
+		{
+			Genode::log("Enable UART clock...");
+			write<cm_per_uart1_clkctrl::modulemode>(2);
+			while (read<cm_per_uart1_clkctrl::modulemode>() != 2);
+			while (!(read<cm_per_l4ls_clkstctrl::clkactivity_l4ls_gclk>() == 1
+			      && read<cm_per_l4ls_clkstctrl::clkactivity_uart_gfclk>() == 1));
+			Genode::log("UART clocks in CM_PER enabled.");
+		}
 
-  void enable_cpsw_clock() {
-    Genode::log("Enable CPSW clock...");
-    Genode::log("Current state: ", read<cm_per_cpsw_clkstctrl::clkactivity_cpsw_125mhz_gclk>());
-    write<cm_per_cpsw_clkstctrl::clktrctrl>(2);
-    Genode::log("Current state: ", read<cm_per_cpsw_clkstctrl::clkactivity_cpsw_125mhz_gclk>());
-  };
+		void enable_cpsw_clock()
+		{
+			Genode::log("Enable CPSW clock...");
+			Genode::log("Current state: ", read<cm_per_cpsw_clkstctrl::clkactivity_cpsw_125mhz_gclk>());
+			write<cm_per_cpsw_clkstctrl::clktrctrl>(2);
+			Genode::log("Current state: ", read<cm_per_cpsw_clkstctrl::clkactivity_cpsw_125mhz_gclk>());
+		}
 
-	Cmper(Genode::Env &env,
-			Genode::addr_t const mmio_base,
-			Genode::size_t const mmio_size)
-	: Genode::Attached_io_mem_dataspace(env, mmio_base, mmio_size),
-		Genode::Mmio((Genode::addr_t)local_addr<void>()) {
-		Genode::log("Instatiate CM_PER");
-	};
+		Cmper(Genode::Env &env,
+		      Genode::addr_t const mmio_base,
+		      Genode::size_t const mmio_size)
+		: Genode::Attached_io_mem_dataspace(env, mmio_base, mmio_size),
+		  Genode::Mmio((Genode::addr_t)local_addr<void>()) {
+			Genode::log("Instatiate CM_PER");
+		}
+};
+
+/* TODO:
+ * Add CM_DPLL
+ * - timer2_clk (timer 2)
+ * - mac_clksel (mII network)
+ * - gpio0_dbclk (GPIO0 debouncing)
+ */
 
 
 
+class Genode::Cmdpll : Genode::Attached_io_mem_dataspace, public Mmio
+{
+private:
+		struct cm_dpll_clksel_timer7_clk : Register<0x4,32>
+		{
+			struct clksel : Bitfield<0,2> { };
+		};
+		struct cm_dpll_clksel_timer2_clk : Register<0x8,32>
+		{
+			struct clksel : Bitfield<0,2> { };
+		};
+		struct cm_dpll_clksel_timer3_clk : Register<0xc,32>
+		{
+			struct clksel : Bitfield<0,2> { };
+		};
+		struct cm_dpll_clksel_timer4_clk : Register<0x10,32>
+		{
+			struct clksel : Bitfield<0,2> { };
+		};
+		struct cm_dpll_cm_mac_clksel : Register<0x14,32>
+		{
+			struct mii_clk_sel : Bitfield<2,1> { };
+		};
+		struct cm_dpll_clksel_timer5_clk : Register<0x18,32>
+		{
+			struct clksel : Bitfield<0,2> { };
+		};
+		struct cm_dpll_clksel_timer6_clk : Register<0x1c,32>
+		{
+			struct clksel : Bitfield<0,2> { };
+		};
+		struct cm_dpll_cm_cpts_rft_clksel : Register<0x20,32>
+		{
+			struct clksel : Bitfield<0,1> { };
+		};
+		struct cm_dpll_clksel_timer1ms_clk : Register<0x28,32>
+		{
+			struct clksel : Bitfield<0,3> { };
+		};
+		struct cm_dpll_clksel_gfx_fclk : Register<0x2c,32>
+		{
+			struct clkdiv_sel_gfx_fclk : Bitfield<0,1> { };
+			struct clksel_gfx_clk : Bitfield<1,1> { };
+		};
+		struct cm_dpll_clksel_pru_icss_ocp_clk : Register<0x30,32>
+		{
+			struct clksel : Bitfield<0,1> { };
+		};
+		struct cm_dpll_clksel_lcdc_pixel_clk : Register<0x34,32>
+		{
+			struct clksel : Bitfield<0,2> { };
+		};
+		struct cm_dpll_clksel_wdt1_clk : Register<0x38,32>
+		{
+			struct clksel : Bitfield<0,1> { };
+		};
+		struct cm_dpll_clksel_gpio0_dbclk : Register<0x3c,32>
+		{
+			struct clksel : Bitfield<0,1> { };
+		};
+public:
 
+		Cmdpll(Genode::Env &env,
+		       Genode::addr_t const mmio_base,
+		       Genode::size_t const mmio_size)
+		: Genode::Attached_io_mem_dataspace(env, mmio_base, mmio_size),
+		  Genode::Mmio((Genode::addr_t)local_addr<void>()) {
+			Genode::log("Instatiate CM_DPLL");
+		}
 };
 
 namespace Am335x {
+
 	enum {
 		RAM_0_BASE = 0x00000000,
 		RAM_0_SIZE = 0x20000000, /* GPMC according to Memory Map*/
@@ -509,7 +588,7 @@ namespace Am335x {
 		GPIO_1_SIZE = 0x00001000,
 
 		/* UART 3, 4 ,5 */
-    
+
 		UART_3_BASE = 0x481A6000,
 		UART_3_SIZE = 0x00001000,
 
@@ -526,6 +605,11 @@ namespace Am335x {
 		GPIO_3_SIZE = 0x00001000,
 
 		/* MMC */
+		MMCHS_0_BASE = 0x48060000,
+		MMCHS_0_SIZE = 0x00001000,
+
+		MMC_1_BASE  = 0x481D8000,
+		MMC_1_SIZE  = 0x00001000,
 
 		INTCPS_BASE = 0x48200000,
 		INTCPS_SIZE = 0x00001000,
@@ -585,7 +669,7 @@ namespace Am335x {
 
 	};
 
-};
+}
 
 
 #endif /* _INCLUDE__DRIVERS__DEFS__AM335X_H_ */
