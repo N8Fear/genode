@@ -16,7 +16,7 @@
 
 /* core includes */
 //#include <spec/imx/board_support.h>
-#include <drivers/board_base.h>
+//#include <drivers/board_base.h>
 
 namespace Genode { struct Board; }
 
