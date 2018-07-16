@@ -1,11 +1,13 @@
 /*
  * \brief  Time source that uses DMTIMER2 from the AM335x
- * \author Hinnerk van Bruinehsen
- * \date   2018-03-27
+ * \author Hinnerk van Bruinehsen <hvbruinehsen@stackptr.de>
+ * \date   2018-07-16
  */
 
 /*
  * Copyright (C) 2009-2018 Genode Labs GmbH
+ * Copyright (C) 2018 Freie Universität Berlin
+ * Copyright (C) 2018 Hinnerk van Bruinehsen
  *
  * This file is part of the Genode OS framework, which is distributed
  * under the terms of the GNU Affero General Public License version 3.
@@ -30,16 +32,13 @@ class Timer::Time_source : private Genode::Attached_mmio,
 {
 	private:
 
-		enum { TICKS_PER_MS = 25000 };
+		enum { TICKS_PER_MS = 25000};
 
 		struct tiocp_cfg : Register<0x10,32>
 		{
 			struct softreset : Bitfield<0,1>
 			{
-				enum {
-					NO_ACTION = 0,
-					RESET_ONGOING = 1,
-				};
+				enum { NO_ACTION = 0, RESET_ONGOING = 1, };
 			};
 
 		};
@@ -71,6 +70,13 @@ class Timer::Time_source : private Genode::Attached_mmio,
 				enum { ONE_SHOT = 0, AUTORELOAD = 1, };
 			};
 
+			struct ptv : Bitfield<2,3> { };
+
+			struct pre : Bitfield<5,1>
+			{
+				enum { PRESCALER_DISABLED = 0, PRESCALER_ENABLED = 1, };
+			};
+
 			struct ce : Bitfield<6,1>
 			{
 				enum { COMPARE_MODE_DISABLED = 0, COMPARE_MODE_ENABLED =1, };
@@ -80,11 +86,7 @@ class Timer::Time_source : private Genode::Attached_mmio,
 				access_t tclr_start = 0;
 				ar::set(tclr_start, ar::ONE_SHOT);
 				ce::set(tclr_start, ce::COMPARE_MODE_ENABLED);
-				// TODO: has to be set in other function
-				//irq_enable::mat_en_flag::set(irq_enable, irq_enable::mat_en_flag::IRQ_ENABLE);
-		//		Clk_src::set(cr, Clk_src::HIGH_FREQ_REF_CLK);
 
-				Genode::warning("prepare_one_shot returns...");
 				return tclr_start;
 			}
 
@@ -94,9 +96,9 @@ class Timer::Time_source : private Genode::Attached_mmio,
 		struct tcrr : Register<0x3c,32> { enum { MAX = ~(access_t) 0 }; };
 
 		Genode::Irq_connection     _timer_irq;
-		Genode::Duration           _curr_time     { Genode::Microseconds(0) };
-		Genode::Microseconds const _max_timeout   { Genode::timer_ticks_to_us(tcrr::MAX / 2, TICKS_PER_MS) };
-		unsigned long              _cleared_ticks { 0 };
+	Genode::Duration           _curr_time     { Genode::Microseconds(0) };
+	Genode::Microseconds const _max_timeout   { Genode::timer_ticks_to_us(tcrr::MAX / 2, TICKS_PER_MS) };
+	unsigned long              _cleared_ticks { 0 };
 
 	public:
 
@@ -109,7 +111,7 @@ class Timer::Time_source : private Genode::Attached_mmio,
 
 		Genode::Duration curr_time() override;
 		void schedule_timeout(Genode::Microseconds duration, Timeout_handler &handler) override;
-		Genode::Microseconds max_timeout() const override { return _max_timeout; };
+		Genode::Microseconds max_timeout() const override { return _max_timeout; }
 };
 
 #endif /* _TIME_SOURCE_H_ */
