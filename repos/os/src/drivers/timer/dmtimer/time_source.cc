@@ -1,11 +1,13 @@
-/**
+/*
  * \brief  Time source that uses DMTIMER2 from the AM335x
- * \author Hinnerk van Bruinehsen
- * \date   2018-03-27
+ * \author Hinnerk van Bruinehsen <hvbruinehsen@stackptr.de>
+ * \date   2018-07-16
  */
 
 /*
  * Copyright (C) 2009-2018 Genode Labs GmbH
+ * Copyright (C) 2018 Freie Universität Berlin
+ * Copyright (C) 2018 Hinnerk van Bruinehsen
  *
  * This file is part of the Genode OS framework, which is distributed
  * under the terms of the GNU Affero General Public License version 3.
@@ -29,21 +31,23 @@ void Timer::Time_source::schedule_timeout(Genode::Microseconds  duration,
 	/* disable timer */
 	write<tclr::st>(tclr::st::STOP_TIMER);
 
+	/* Reset counter register to 0 */
+	write<tcrr>(0);
+
 	/* clear interrupt and install timeout */
 	write<irqstatus::mat_it_flag>(1);
-	write<tclr>(tclr::prepare_one_shot());
-	write<tmar>(0x123); // just testing
-	write<tmar>(tcrr::MAX - ticks);
+	write<tmar>(ticks);
+	int prep = tclr::prepare_one_shot();
+	write<tclr>(prep);
 	write<irq_enable_set::mat_en_flag>(irq_enable_set::mat_en_flag::IRQ_ENABLE);
 
 	/* start timer */
 	write<tclr::st>(tclr::st::START_TIMER);
 }
 
-
 Duration Timer::Time_source::curr_time()
 {
-	unsigned long const uncleared_ticks = tcrr::MAX - read<tcrr>() - _cleared_ticks;
+	unsigned long const uncleared_ticks = read<tcrr>() - _cleared_ticks;
 	unsigned long const uncleared_us    = timer_ticks_to_us(uncleared_ticks, TICKS_PER_MS);
 
 	/* update time only on IRQs and if rate is under 1000 per second */
