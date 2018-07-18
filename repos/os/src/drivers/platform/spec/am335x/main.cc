@@ -16,81 +16,55 @@
 #include <base/log.h>
 #include <base/heap.h>
 #include <base/component.h>
-#include <root/component.h>
-#include <platform_session/platform_session.h>
+#include <regulator/component.h>
+#include <regulator/consts.h>
 
-namespace Platform {
+#include <cmper.h>
+#include <cmdpll.h>
 
-	class Session_component;
-	class Root;
-}
-
-class Platform::Session_component : public Genode::Rpc_object<Platform::Session>
+struct Driver_factory : Regulator::Driver_factory
 {
- private:
- public:
-/*********************************
- *  Platform session interface  **
- *********************************/
+	Cmper  _cmper;
+	Cmdpll _cmdpll;
 
-void enable(Device dev)
-{
-	switch (dev) {
+	Driver_factory(Genode::Env &env) : _cmper(env), _cmdpll(env) { }
+
+	Regulator::Driver &create(Regulator::Regulator_id id)
+	override
+	{
+		switch (id)
+		//case Regulator::PWR_1: // for example
+		//case Regulator::PWR_2: // for example
+		//  return _cmper;
+
+		//case Regulator::CLK_1: // for example
+		//case Regulator::CLK_2: // for example
+		//  return _cmdpll;
+
 	default:
-		Genode::warning("invalid device");
-	};
-}
+		throw Genode::Service_denied();
+	}
 
-void disable(Device dev)
-{
-	switch (dev) {
-	default:
-		Genode::warning("invalid device");
-	};
-}
-
-void clock_rate(Device dev, unsigned long /* rate */)
-{
-	switch (dev) {
-	default:
-		Genode::warning("invalid device");
-	};
-}
-
-	Board_revision revision() { return UNKNOWN; }
+	void destroy(Regulator::Driver &) override { }
 };
 
-class Platform::Root : public Genode::Root_component<Platform::Session_component>
-{
-	private:
-		Genode::Env &_env;
-	protected:
-
-		Session_component *_create_session(const char *) {
-			return new (md_alloc()) Session_component();
-		}
-
-	public:
-
-  Root(Genode::Env &env, Genode::Allocator &md_alloc)
-		: Genode::Root_component<Session_component>(env.ep(), md_alloc), _env(env)
-		{ }
-};
 
 struct Main
 {
-	Genode::Env &  env;
-	Genode::Heap   heap { env.ram(), env.rm() };
-	Platform::Root root { env, heap };
+	Genode::Env &    env;
+	Genode::Heap     heap {env.ram(), env.rm() };
+	::Driver_factory factory { env };
+	Regulator::Root  root {env, heap, factory };
 
-	Main(Genode::Env &env) : env(env) {
-		env.parent().announce(env.ep().manage(root)); }
+	Main(Genode::Env & env) : env(env) {
+		env.parent().announce(env.ep().manage(root));
+	}
+
 };
 
 void Component::construct(Genode::Env &env)
 {
-	Genode::log("--- AM335x platform driver ---");
-	Genode::log("TODO/Work in Progress - nothing happens here right now");
+	Genode::log(" --- AM335x platform driver ---");
 
 	static Main main(env);
 }
