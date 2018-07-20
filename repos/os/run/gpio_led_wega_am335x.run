@@ -1,0 +1,105 @@
+#
+# Build
+#
+if {[have_spec gpio] == 0} {
+	puts "Runs only on platforms with GPIO"
+	exit 0
+}
+
+set build_components {
+	core init
+	drivers/timer drivers/gpio
+	test/gpio_led
+}
+
+lappend_if [have_spec wega_am335x] build_components drivers/platform
+
+proc gpio_drv { } { if {[have_spec rpi] && [have_spec hw]}  { return hw_gpio_drv }
+                    if {[have_spec rpi] && [have_spec foc]} { return foc_gpio_drv }
+                    return gpio_drv }
+
+build $build_components
+
+create_boot_directory
+
+#
+# Generate config
+# Example preconfigured for RaspberryPI ACT Led
+#
+
+append config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="CPU"/>
+		<service name="RM"/>
+		<service name="PD"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="LOG"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> </any-service>
+	</default-route>
+
+  <default caps="100"/>
+
+	<start name="timer">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Timer"/></provides>
+	</start>}
+
+append_if [expr [have_spec am335x]] config {
+  <start name="platform_drv">
+	  <resource name="RAM" quantum="4M"/>
+	  <provides><service name="Regulator"/>
+	            <service name="Platform"/>
+		</provides>
+	</start>
+}
+
+append config "
+	<start name=\"[gpio_drv]\">"
+
+append config {
+		<resource name="RAM" quantum="10M"/>
+		<provides><service name="Gpio"/></provides>
+		<config>
+			<gpio num="83" mode="O" value="1"/>
+		</config>
+	  <route>
+	  	<any-service> <parent/> </any-service>
+	  </route>
+	</start>
+
+	<start name="led_gpio_drv">
+		<config gpio_pin="83" delay="500" times="20"/>
+		<resource name="RAM" quantum="10M"/>
+	  <route>
+		  <service name="Timer"> <child name="timer"/></service>
+		  <service name="Gpio"> <child name="gpio_drv"/></service>
+	  	<any-service> <parent/> </any-service>
+	  </route>
+	</start>
+
+</config>}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core ld.lib.so init
+	timer
+	gpio_drv
+	led_gpio_drv
+}
+
+lappend_if [have_spec wega_am335x] boot_modules platform_drv
+
+build_boot_image $boot_modules
+
+run_genode_until forever
