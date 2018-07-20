@@ -93,7 +93,10 @@ class Am335x_driver : public Gpio::Driver
 					_irq_enabled[pin] = enable;
 				}
 
-				void ack_irq(int) { Genode::warning(__func__, " not implemented"); }
+				void ack_irq(int pin) {
+					_reg.write<Gpio_reg::Irqstatus_0>(1 << pin);
+					_irq.ack_irq();
+				}
 
 				void sigh(int pin, Genode::Signal_context_capability cap) {
 					_sig_cap[pin] = cap; }
