@@ -28,8 +28,6 @@
 #include "gpio.h"
 
 
-// TODO:
-// check if the clock in CM_PER needs to be enabled first 
 class Am335x_driver : public Gpio::Driver
 {
 	private:
@@ -95,7 +93,7 @@ class Am335x_driver : public Gpio::Driver
 					_irq_enabled[pin] = enable;
 				}
 
-				void ack_irq(int pin) { Genode::warning(__func__, " not implemented"); }
+				void ack_irq(int) { Genode::warning(__func__, " not implemented"); }
 
 				void sigh(int pin, Genode::Signal_context_capability cap) {
 					_sig_cap[pin] = cap; }
