@@ -1,74 +1,165 @@
-From a1ad9be2228036942b6b040aff837799dde97480 Mon Sep 17 00:00:00 2001
+From d5ff365d95d1f56d68f00c1fe4b3d0159c0d4b01 Mon Sep 17 00:00:00 2001
 From: Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
 Date: Mon, 21 Aug 2017 16:07:00 +0200
 Subject: [PATCH 2/2] AM335x: add more devices to dev_p_regs[] and add IRQ defs
 
 ---
- include/plat/am335x/plat/machine.h          | 40 ++++++++++-
- include/plat/am335x/plat/machine/devices.h  | 79 +++++++++++++++++----
- include/plat/am335x/plat/machine/hardware.h | 37 ++++++----
- 3 files changed, 128 insertions(+), 28 deletions(-)
+ include/plat/am335x/plat/machine.h          | 133 +++++++++++++++++++-
+ include/plat/am335x/plat/machine/devices.h  |  79 +++++++++---
+ include/plat/am335x/plat/machine/hardware.h |  37 ++++--
+ 3 files changed, 218 insertions(+), 31 deletions(-)
 
 diff --git a/include/plat/am335x/plat/machine.h b/include/plat/am335x/plat/machine.h
-index ec0f2859..ef4bca06 100644
+index ec0f2859..3026b93f 100644
 --- src/kernel/sel4/include/plat/am335x/plat/machine.h
 +++ src/kernel/sel4/include/plat/am335x/plat/machine.h
-@@ -14,9 +14,47 @@
+@@ -14,10 +14,135 @@
  #define N_INTERRUPTS 128
- 
+
  enum IRQConstants {
 -    DMTIMER0_IRQ = 66,
-+    USB_SS_INT = 17,
-+    USB_INT0 = 18,
-+    USB_INT1 = 19,
-+    MMC_SD1_INT = 28,
-+    MMC_SD2_INT = 29,
-+    GPIO_INT2_A = 32,
-+    GPIO_INT2_B = 33,
-+    USB_WAKEUP = 34,
-+    LCDC_INT = 36,
-+    SYS_INT_3PGSWRXTHR0 = 40,
-     SYS_INT_3PGSWRXINT0 = 41,
-     SYS_INT_3PGSWTXINT0 = 42,
-+    UART3_INT = 44,
-+    UART4_INT = 45,
-+    UART5_INT = 46,
-+    GPIO_INT3_A = 62,
-+    GPIO_INT3_B = 63,
-+    MMC_SD0_INT =64,
-+    DMTIMER0_IRQ = 66,
-+    DMTIMER1_1MS_IRQ = 67,
-+    DMTIMER2_IRQ = 68,
-+    DMTIMER3_IRQ = 69,
-+    UART0_INT = 72,
-+    UART1_INT = 73,
-+    UART2_INT = 74,
-+    RTC_INT = 75,
-+    RTC_ALARM_INT = 76,
-+    WD_TIMER1_INT = 91,
-+    DMTIMER_4_IRQ = 92,
-+    DMTIMER_5_IRQ = 93,
-+    DMTIMER_6_IRQ = 94,
-+    DMTIMER_7_IRQ = 95,
-+    GPIO_INT0_A = 96,
-+    GPIO_INT0_B = 97,
-+    GPIO_INT1_A = 98,
-+    GPIO_INT1_B = 99,
-+    AES_0_IRQ_S = 102,
-+    AES_0_IRQ_P = 103,
-+    SHA_IRQ_S = 108,
-+    SHA_IRQ_P = 109,
-+    RNG_IRQ = 111,
-     maxIRQ = 127
+-    SYS_INT_3PGSWRXINT0 = 41,
+-    SYS_INT_3PGSWTXINT0 = 42,
+-    maxIRQ = 127
++    EMU_INT             =   0,
++    COMMTX              =   1,
++    COMMRX              =   2,
++    BENCH               =   3,
++    ELM_IRQ             =   4,
++    SSM_WFI_IRQ         =   5,
++    SSM_IRQ             =   6,
++    NMI                 =   7,
++    SEC_EVNT            =   8,
++    L3DEBUG             =   9,
++    L3APP_INT           =  10,
++    PRCM_INT            =  11,
++    EDMACOMP_INT        =  12,
++    EDMAMPERR           =  13,
++    EDMAERR_INT         =  14,
++    WDT_0_INT           =  15,
++    ADC_TSC_GEN_INT     =  16,
++    USB_SS_INT          =  17,
++    USB_INT0            =  18,
++    USB_INT1            =  19,
++    PRU_ICSS_EVTOUT_0   =  20,
++    PRU_ICSS_EVTOUT_1   =  21,
++    PRU_ICSS_EVTOUT_2   =  22,
++    PRU_ICSS_EVTOUT_3   =  23,
++    PRU_ICSS_EVTOUT_4   =  24,
++    PRU_ICSS_EVTOUT_5   =  25,
++    PRU_ICSS_EVTOUT_6   =  26,
++    PRU_ICSS_EVTOUT_7   =  27,
++    MMC_SD1_INT         =  28,
++    MMC_SD2_INT         =  29,
++    I2C_2_INT           =  30,
++    E_CAP_0_INT         =  31,
++    GPIO_INT2_A         =  32,
++    GPIO_INT2_B         =  33,
++    USB_WAKEUP          =  34,
++    PCIE_WAKEUP         =  35,
++    LCDC_INT            =  36,
++    GFX_INT             =  37,
++    /* Reserved         =  38, */
++    E_PWM_2_INT         =  39,
++    SYS_INT_3PGSWRXTHR0 =  40,
++    SYS_INT_3PGSWRXINT0 =  41,
++    SYS_INT_3PGSWTXINT0 =  42,
++    CPSW_MISC_PULSE     =  43,
++    UART3_INT           =  44,
++    UART4_INT           =  45,
++    UART5_INT           =  46,
++    E_CAP_INT           =  47,
++    /* Reserved         =  48, */
++    /* Reserved         =  49, */
++    /* Reserved         =  50, */
++    /* Reserved         =  51, */
++    DCAN_0_INT_0        =  52,
++    DCAN_0_INT_1        =  53,
++    DCAN_0_PARITY       =  54,
++    DCAN_1_INT_0        =  55,
++    DCAN_1_INT_1        =  56,
++    DCAN_1_PARITY       =  57,
++    E_PWM_0_TZ_INT      =  58,
++    E_PWM_1_TZ_INT      =  59,
++    E_PWM_2_TZ_INT      =  60,
++    E_CAP_2_INT         =  61,
++    GPIO_INT3_A         =  62,
++    GPIO_INT3_B         =  63,
++    MMC_SD0_INT         =  64,
++    MC_SPI_0_INT        =  65,
++    DMTIMER0_IRQ        =  66,
++    DMTIMER1_1MS_IRQ    =  67,
++    DMTIMER2_IRQ        =  68,
++    DMTIMER3_IRQ        =  69,
++    I2C_0_INT           =  70,
++    I2C_1_INT           =  71,
++    UART0_INT           =  72,
++    UART1_INT           =  73,
++    UART2_INT           =  74,
++    RTC_INT             =  75,
++    RTC_ALARM_INT       =  76,
++    MB_INT_0            =  77,
++    M3_TXEV             =  78,
++    E_QEP_0_INT         =  79,
++    MCA_TX_INT_0        =  80,
++    MCA_RX_INT_0        =  81,
++    MCA_TX_INT_1        =  82,
++    MCA_RX_INT_1        =  83,
++    /* Reserved         =  84, */
++    /* Reserved         =  85, */
++    E_PWM_0_INT         =  86,
++    E_PWM_1_INT         =  87,
++    E_QEP_1_INT         =  88,
++    E_QEP_2_INT         =  89,
++    DMA_INTR_PIN2       =  90,
++    WDT_1_INT           =  91,
++    DMTIMER_4_IRQ       =  92,
++    DMTIMER_5_IRQ       =  93,
++    DMTIMER_6_IRQ       =  94,
++    DMTIMER_7_IRQ       =  95,
++    GPIO_INT0_A         =  96,
++    GPIO_INT0_B         =  97,
++    GPIO_INT1_A         =  98,
++    GPIO_INT1_B         =  99,
++    GPMC_INT            = 100,
++    DDR_ERR_0           = 101,
++    AES_0_IRQ_S         = 102,
++    AES_0_IRQ_P         = 103,
++    /* Reserved         = 104, */
++    /* Reserved         = 105, */
++    /* Reserved         = 106, */
++    /* Reserved         = 107, */
++    SHA_IRQ_S           = 108,
++    SHA_IRQ_P           = 109,
++    FPKA_SINTREQUEST_S  = 110,
++    RNG_IRQ             = 111,
++    TC_ERR_INT_0        = 112,
++    TC_ERR_INT_1        = 113,
++    TC_ERR_INT_2        = 114,
++    ADC_TSC_PENINT      = 115,
++    /* Reserved         = 116, */
++    /* Reserved         = 117, */
++    /* Reserved         = 118, */
++    /* Reserved         = 119, */
++    SMRFLX_MPU          = 120,
++    SMRFLX_CORE         = 121,
++    /* Reserved         = 122, */
++    DMA_INTR_PIN0       = 123,
++    DMA_INTR_PIN1       = 124,
++    MC_SPI_1_INT        = 125,
++    /* Reserved         = 126, */
++    /* Reserved         = 127, */
++    maxIRQ              = 127
  } platform_interrupt_t;
- 
+
+ #define IRQ_CNODE_BITS 12
 diff --git a/include/plat/am335x/plat/machine/devices.h b/include/plat/am335x/plat/machine/devices.h
 index 3f376b5c..a93fd8d4 100644
 --- src/kernel/sel4/include/plat/am335x/plat/machine/devices.h
 +++ src/kernel/sel4/include/plat/am335x/plat/machine/devices.h
 @@ -20,19 +20,70 @@
- 
- 
+
+
  /* Other devices on the SoC. */
 -#define INTC_PADDR      0x48200000
 -#define UART0_PADDR     0x44E09000
@@ -149,7 +240,7 @@ index 3f376b5c..a93fd8d4 100644
 +#define CPSW_WR_PADDR         0x4A101200   /* 3584   */
 +#define CPPI_RAM_PADDR        0x4A102000   /* 8192   */
 +#define PRU_ICSS_PADDR        0x4A300000   /* 512 KB */
- 
+
  #endif
 diff --git a/include/plat/am335x/plat/machine/hardware.h b/include/plat/am335x/plat/machine/hardware.h
 index 597e44b1..f96d52a2 100644
@@ -164,7 +255,7 @@ index 597e44b1..f96d52a2 100644
      },
      {
 @@ -65,18 +64,30 @@ static const p_region_t BOOT_RODATA avail_p_regs[] = {
- 
+
  static const p_region_t BOOT_RODATA dev_p_regs[] = {
      /* SoC devices: */
 -    { /* .start = */ UART0_PADDR,    /* .end = */ UART0_PADDR + (1 << PAGE_BITS) },
@@ -206,6 +297,5 @@ index 597e44b1..f96d52a2 100644
      /* Board devices. */
      /* TODO: This should ultimately be replaced with a more general solution. */
  };
--- 
+--
 2.18.0
-
