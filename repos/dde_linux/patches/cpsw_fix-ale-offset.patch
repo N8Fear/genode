@@ -1,0 +1,16 @@
+diff --git a/drivers/net/ethernet/ti/cpsw_ale.c b/drivers/net/ethernet/ti/cpsw_ale.c
+index 43b061b..00fd167 100644
+--- a/drivers/net/ethernet/ti/cpsw_ale.c
++++ b/drivers/net/ethernet/ti/cpsw_ale.c
+@@ -709,6 +709,8 @@ EXPORT_SYMBOL_GPL(cpsw_ale_control_get);
+ 
+ static void cpsw_ale_timer(unsigned long arg)
+ {
++	/* TODO/HvB: find out why the fsk this is necessary */
++	arg = arg-20;
+ 	struct cpsw_ale *ale = (struct cpsw_ale *)arg;
+ 
+ 	cpsw_ale_control_set(ale, 0, ALE_AGEOUT, 1);
+-- 
+2.18.0
+

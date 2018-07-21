@@ -7,6 +7,7 @@ proc have_platform_drv {} {
 	          || [have_spec imx53] \
 	          || [have_spec rpi] \
 	          || [have_spec odroid_x2] \
+	          || [have_spec am335x] \
 	          || [have_spec x86]]
 }
 
@@ -51,6 +52,8 @@ proc nic_drv_config { } {
 		return "<config><card type=\"fsl,imx6q-fec\" mii=\"rgmii\" irq=\"150\" mmio=\"0x2188000\"/></config>" }
 	if {[have_spec omap4] || [have_spec arndale] || [have_spec rpi]} {
 		return {<config uhci="yes" ohci="yes" ehci="yes"><nic mac="02:00:00:00:01:01"/></config>} }
+	if {[have_spec wega_am335x]} {
+		return "<config><card type=\"ti,cpsw\" mii=\"rmii\" irq=\"41\" mmio=\"0x4a100000\"/></config>" }
 	return ""
 }
 

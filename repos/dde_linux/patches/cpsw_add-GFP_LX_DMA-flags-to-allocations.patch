@@ -1,0 +1,65 @@
+diff --git a/drivers/net/ethernet/ti/cpsw.c b/drivers/net/ethernet/ti/cpsw.c
+index fc95806..a918c27 100644
+--- a/drivers/net/ethernet/ti/cpsw.c
++++ b/drivers/net/ethernet/ti/cpsw.c
+@@ -1313,7 +1313,7 @@ static int cpsw_ndo_open(struct net_device *ndev)
+ 
+ 			ret = -ENOMEM;
+ 			skb = __netdev_alloc_skb_ip_align(priv->ndev,
+-					priv->rx_packet_max, GFP_KERNEL);
++					priv->rx_packet_max, GFP_KERNEL | GFP_LX_DMA);
+ 			if (!skb)
+ 				goto err_cleanup;
+ 			ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
+diff --git a/drivers/net/ethernet/ti/davinci_cpdma.c b/drivers/net/ethernet/ti/davinci_cpdma.c
+index 657b65b..b616c22 100644
+--- a/drivers/net/ethernet/ti/davinci_cpdma.c
++++ b/drivers/net/ethernet/ti/davinci_cpdma.c
+@@ -158,7 +158,7 @@ cpdma_desc_pool_create(struct device *dev, u32 phys, u32 hw_addr,
+ 	int bitmap_size;
+ 	struct cpdma_desc_pool *pool;
+ 
+-	pool = devm_kzalloc(dev, sizeof(*pool), GFP_KERNEL);
++	pool = devm_kzalloc(dev, sizeof(*pool), GFP_KERNEL | GFP_LX_DMA);
+ 	if (!pool)
+ 		goto fail;
+ 
+@@ -170,7 +170,7 @@ cpdma_desc_pool_create(struct device *dev, u32 phys, u32 hw_addr,
+ 	pool->num_desc	= size / pool->desc_size;
+ 
+ 	bitmap_size  = (pool->num_desc / BITS_PER_LONG) * sizeof(long);
+-	pool->bitmap = devm_kzalloc(dev, bitmap_size, GFP_KERNEL);
++	pool->bitmap = devm_kzalloc(dev, bitmap_size, GFP_KERNEL | GFP_LX_DMA);
+ 	if (!pool->bitmap)
+ 		goto fail;
+ 
+@@ -180,7 +180,7 @@ cpdma_desc_pool_create(struct device *dev, u32 phys, u32 hw_addr,
+ 		pool->hw_addr = hw_addr;
+ 	} else {
+ 		pool->cpumap = dma_alloc_coherent(dev, size, &pool->phys,
+-						  GFP_KERNEL);
++						  GFP_KERNEL | GFP_LX_DMA);
+ 		pool->iomap = pool->cpumap;
+ 		pool->hw_addr = pool->phys;
+ 	}
+@@ -267,7 +267,7 @@ struct cpdma_ctlr *cpdma_ctlr_create(struct cpdma_params *params)
+ {
+ 	struct cpdma_ctlr *ctlr;
+ 
+-	ctlr = devm_kzalloc(params->dev, sizeof(*ctlr), GFP_KERNEL);
++	ctlr = devm_kzalloc(params->dev, sizeof(*ctlr), GFP_KERNEL | GFP_LX_DMA);
+ 	if (!ctlr)
+ 		return NULL;
+ 
+@@ -501,7 +501,7 @@ struct cpdma_chan *cpdma_chan_create(struct cpdma_ctlr *ctlr, int chan_num,
+ 	if (__chan_linear(chan_num) >= ctlr->num_chan)
+ 		return NULL;
+ 
+-	chan = devm_kzalloc(ctlr->dev, sizeof(*chan), GFP_KERNEL);
++	chan = devm_kzalloc(ctlr->dev, sizeof(*chan), GFP_KERNEL | GFP_LX_DMA);
+ 	if (!chan)
+ 		return ERR_PTR(-ENOMEM);
+ 
+-- 
+2.18.0
+
