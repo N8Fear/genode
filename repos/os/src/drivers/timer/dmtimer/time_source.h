@@ -95,7 +95,7 @@ class Timer::Time_source : private Genode::Attached_mmio,
 		struct tmar : Register<0x4c,32> { };
 		struct tcrr : Register<0x3c,32> { enum { MAX = ~(access_t) 0 }; };
 
-		Genode::Irq_connection     _timer_irq;
+	Genode::Irq_connection     _timer_irq;
 	Genode::Duration           _curr_time     { Genode::Microseconds(0) };
 	Genode::Microseconds const _max_timeout   { Genode::timer_ticks_to_us(tcrr::MAX / 2, TICKS_PER_MS) };
 	unsigned long              _cleared_ticks { 0 };
