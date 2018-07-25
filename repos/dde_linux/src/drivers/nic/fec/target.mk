@@ -1,5 +1,5 @@
 REQUIRES = arm_v7
-
+REQUIRES = fec
 TARGET   = nic_drv
 LIBS     = base lx_kit_setjmp fec_nic_include
 SRC_CC   = main.cc platform.cc lx_emul.cc component.cc
