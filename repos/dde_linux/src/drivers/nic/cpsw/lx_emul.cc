@@ -1324,5 +1324,4 @@ int  bus_register(struct bus_type *bus)
 	TRACE;
 	return 0;
 }
-
 }
