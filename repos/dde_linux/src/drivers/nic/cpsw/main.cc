@@ -31,7 +31,7 @@
 
 /* Linux module functions */
 extern "C" int module_cpsw_driver_init();
-extern "C" int module_phy_module_init();
+// HVB extern "C" int module_phy_module_init();
 extern "C" int subsys_phy_init();
 extern "C" void skb_init();
 
@@ -93,7 +93,7 @@ static void run_linux(void * m)
 
 	skb_init();
 	subsys_phy_init();
-	module_phy_module_init();
+	// HVB module_phy_module_init();
 	module_cpsw_driver_init();
 
 	main.announce();
