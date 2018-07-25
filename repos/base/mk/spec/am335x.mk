@@ -4,7 +4,7 @@
 # \date 2018-07-13
 #
 
-SPECS += arm_v7a gpio
+SPECS += arm_v7a gpio cpsw
 
 # Add repository relative include paths
 REP_INC_DIR += include/spec/am335x

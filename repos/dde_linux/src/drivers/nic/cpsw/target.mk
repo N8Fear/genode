@@ -1,4 +1,5 @@
 REQUIRES = arm_v7
+REQUIRES = cpsw
 
 TARGET   = nic_drv
 LIBS     = base lx_kit_setjmp cpsw_nic_include
