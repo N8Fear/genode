@@ -123,10 +123,10 @@ void netif_tx_disable(struct net_device *dev)
 	TRACE_AND_STOP;
 }
 
-void netif_tx_stop_queue(struct netdev_queue *dev_queue)
-{
-	TRACE_AND_STOP;
-}
+//void netif_tx_stop_queue(struct netdev_queue *dev_queue)
+//{
+//	TRACE_AND_STOP;
+//}
 
 void netif_tx_wake_all_queues(struct net_device * d)
 {
@@ -294,6 +294,194 @@ void driver_unregister(struct device_driver *drv)
 	TRACE_AND_STOP;
 }
 
+
+//HVB
+
+u32 __raw_readl(const volatile void __iomem *addr)
+{
+	TRACE_AND_STOP;
+}
+
+void __raw_writel(u32 val, volatile void __iomem *addr)
+{
+	TRACE_AND_STOP;
+}
+
+int of_machine_is_compatible(const char *compat)
+{
+	TRACE_AND_STOP;
+}
+
+int pm_runtime_put_sync(struct device *dev)
+{
+	TRACE_AND_STOP;
+}
+
+struct regmap *syscon_regmap_lookup_by_phandle(struct device_node *np,
+					const char *property)
+{
+	TRACE_AND_STOP;
+}
+
+//int netif_receive_skb(struct sk_buff *skb)
+//{
+//	TRACE_AND_STOP;
+//}
+
+void bitmap_set(unsigned long *map, unsigned int start, int len)
+{
+	TRACE_AND_STOP;
+}
+
+void bitmap_clear(unsigned long *map, unsigned int start, int len)
+{
+	TRACE_AND_STOP;
+}
+
+void of_device_unregister(struct platform_device *ofdev)
+{
+	TRACE_AND_STOP;
+}
+
+int of_device_is_compatible(const struct device_node *device,
+				   const char * compat)
+{
+	TRACE_AND_STOP;
+}
+
+struct platform_device *of_find_device_by_node(struct device_node *np)
+{
+	TRACE_AND_STOP;
+}
+
+struct device_node *of_find_node_by_phandle(phandle handle)
+{
+	TRACE_AND_STOP;
+}
+
+struct property *of_find_property(const struct device_node *np,
+					 const char *name,
+					 int *lenp)
+{
+	TRACE_AND_STOP;
+}
+
+struct device_node *of_get_next_child(const struct device_node *node,
+					     struct device_node *prev)
+{
+	TRACE_AND_STOP;
+}
+
+const struct of_device_id *of_match_node(
+	const struct of_device_id *matches, const struct device_node *node)
+{
+	TRACE_AND_STOP;
+}
+
+struct phy_device *of_phy_find_device(struct device_node *phy_np)
+{
+	TRACE_AND_STOP;
+}
+
+int of_platform_populate(struct device_node *root,
+				const struct of_device_id *matches,
+				const struct of_dev_auxdata *lookup,
+				struct device *parent)
+{
+	TRACE_AND_STOP;
+	return -1;
+}
+
+bool of_property_read_bool(const struct device_node *np,
+					 const char *propname)
+{
+	TRACE_AND_STOP;
+}
+
+struct resource *platform_get_resource_byname(struct platform_device *dev,
+					      unsigned int type,
+					      const char *name)
+{
+	TRACE_AND_STOP;
+}
+
+void iounmap(volatile void __iomem *cookie)
+{
+	TRACE_AND_STOP;
+}
+
+__iomem *ioremap(resource_size_t res_cookie, size_t size)
+{
+	TRACE_AND_STOP;
+}
+
+int netif_receive_skb(struct sk_buff *skb)
+{
+	TRACE_AND_STOP;
+}
+
+void devm_kfree(struct device *dev, void *p)
+{
+	TRACE_AND_STOP;
+}
+
+struct gpio_descs *__must_check
+devm_gpiod_get_array_optional(struct device *dev, const char *con_id,
+			      enum gpiod_flags flags)
+{
+	TRACE_AND_STOP;
+}
+
+int device_for_each_child(struct device *parent, void *data,
+			  int (*fn)(struct device *dev, void *data))
+{
+	TRACE_AND_STOP;
+}
+
+struct device *bus_find_device(struct bus_type *bus,
+			       struct device *start, void *data,
+			       int (*match)(struct device *dev, void *data))
+{
+	TRACE_AND_STOP;
+}
+unsigned long
+bitmap_find_next_zero_area(unsigned long *map,
+			   unsigned long size,
+			   unsigned long start,
+			   unsigned int nr,
+			   unsigned long align_mask)
+
+{
+	TRACE_AND_STOP;
+}
+
+void pm_runtime_disable(struct device *dev)
+{
+	TRACE_AND_STOP;
+}
+
+bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
+{
+	TRACE_AND_STOP;
+}
+
+void eth_random_addr(u8 *addr)
+{
+	TRACE_AND_STOP;
+}
+
+bool is_broadcast_ether_addr(const u8 *addr)
+{
+	TRACE_AND_STOP;
+}
+
+u32 netif_msg_init(int debug_value, int default_msg_enable_bits)
+{
+	TRACE_AND_STOP;
+}
+
+// HVB end
+
+
 struct user_namespace init_user_ns;
 int sysctl_tstamp_allow_data;
-

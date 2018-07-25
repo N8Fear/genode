@@ -24,6 +24,7 @@
 #include <lx_emul/printf.h>
 #include <lx_emul/types.h>
 
+
 void lx_backtrace(void);
 
 #define DEBUG_LINUX_PRINTK 0
@@ -199,23 +200,23 @@ ktime_t ns_to_ktime(u64 ns);
 
 struct device_node
 {
+	const char * name;
 	const char * full_name;
 };
 
 struct device;
 struct device_driver;
 
-// HVB remove
-// struct bus_type
-// {
-// 	const char * name;
-// 	const struct attribute_group **dev_groups;
-// 
-// 	int (*match)(struct device *dev, struct device_driver *drv);
-// 	int (*probe)(struct device *dev);
-// 
-// 	const struct dev_pm_ops *pm;
-// };
+ struct bus_type
+ {
+ 	const char * name;
+ 	const struct attribute_group **dev_groups;
+
+ 	int (*match)(struct device *dev, struct device_driver *drv);
+ 	int (*probe)(struct device *dev);
+
+ 	const struct dev_pm_ops *pm;
+ };
 
 struct device_driver {
 	const char * name;
@@ -242,8 +243,6 @@ struct attribute_group
 	struct attribute ** attrs;
 };
 
-struct platform_device;
-
 struct device {
 	char name[32];
 	struct device * parent;
@@ -261,24 +260,184 @@ struct device {
 struct platform_device {
 	const char * name;
 	struct device dev;
+	int id;
 	const struct platform_device_id * id_entry;
 };
 
 //HVB
-struct bus_type {
-	const char *name;
-	const struct attribute_group **dev_groups;
-	int (*match)(struct device *dev, struct device_driver *drv);
-	int (*uevent)(struct device *dev, struct kobj_uevent_env *env);
-	const struct dev_pm_ops *pm;
+#define alloc_etherdev(sizeof_priv) alloc_etherdev_mq(sizeof_priv, 1)
+#define alloc_etherdev_mq(sizeof_priv, count) alloc_etherdev_mqs(sizeof_priv, count, count)
+
+#define netdev_hw_addr_list_count(l) ((l)->count)
+#define netdev_hw_addr_list_empty(l) (netdev_hw_addr_list_count(l) == 0)
+
+static inline void *dev_get_drvdata(const struct device *dev)
+{
+	return dev->driver_data;
+}
+
+typedef u32 phandle;
+
+#define netif_msg_tx_err(p)	((p)->msg_enable & NETIF_MSG_TX_ERR)
+#define netif_msg_probe(p)	((p)->msg_enable & NETIF_MSG_PROBE)
+#define netif_msg_ifdown(p)	((p)->msg_enable & NETIF_MSG_IFDOWN)
+
+
+#define SET_LATE_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn)
+
+static int davinci_mdio_suspend(struct device *dev);
+static int davinci_mdio_resume(struct device *dev);
+typedef u32 phys_addr_t;
+
+struct netdev_queue {
+/*
+ * read mostly part
+ */
+	struct net_device	*dev;
+	struct Qdisc __rcu	*qdisc;
+	struct Qdisc		*qdisc_sleeping;
+/*
+ * write mostly part
+ */
+	spinlock_t		_xmit_lock ____cacheline_aligned_in_smp;
+	int			xmit_lock_owner;
+	/*
+	 * please use this field instead of dev->trans_start
+	 */
+	unsigned long		trans_start;
+
+	/*
+	 * Number of TX timeouts for this queue
+	 * (/sys/class/net/DEV/Q/trans_timeout)
+	 */
+	unsigned long		trans_timeout;
+
+	unsigned long		state;
+
+	unsigned long		tx_maxrate;
+} ____cacheline_aligned_in_smp;
+
+#define SIMPLE_DEV_PM_OPS(name, suspend_fn, resume_fn) \
+const struct dev_pm_ops name = { \
+	SET_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn) \
+}
+
+
+#define GPIOD_FLAGS_BIT_DIR_SET		BIT(0)
+#define GPIOD_FLAGS_BIT_DIR_OUT		BIT(1)
+#define GPIOD_FLAGS_BIT_DIR_VAL		BIT(2)
+
+/**
+ * Optional flags that can be passed to one of gpiod_* to configure direction
+ * and output value. These values cannot be OR'd.
+ */
+enum gpiod_flags {
+	GPIOD_ASIS	= 0,
+	GPIOD_IN	= GPIOD_FLAGS_BIT_DIR_SET,
+	GPIOD_OUT_LOW	= GPIOD_FLAGS_BIT_DIR_SET | GPIOD_FLAGS_BIT_DIR_OUT,
+	GPIOD_OUT_HIGH	= GPIOD_FLAGS_BIT_DIR_SET | GPIOD_FLAGS_BIT_DIR_OUT |
+			  GPIOD_FLAGS_BIT_DIR_VAL,
 };
-// struct bus_type platform_bus_type = {
-// 	.name = "platform",
-// 	.dev_groups = platform_dev_groups,
-// 	.match = platform_match,
-// 	.uevent = platform_uevent,
-// 	.pm = &platform_dev_pm_ops,
-// };
+
+enum {
+        NETIF_MSG_DRV           = 0x0001,
+        NETIF_MSG_PROBE         = 0x0002,
+        NETIF_MSG_LINK          = 0x0004,
+        NETIF_MSG_TIMER         = 0x0008,
+        NETIF_MSG_IFDOWN        = 0x0010,
+        NETIF_MSG_IFUP          = 0x0020,
+        NETIF_MSG_RX_ERR        = 0x0040,
+        NETIF_MSG_TX_ERR        = 0x0080,
+        NETIF_MSG_TX_QUEUED     = 0x0100,
+        NETIF_MSG_INTR          = 0x0200,
+        NETIF_MSG_TX_DONE       = 0x0400,
+        NETIF_MSG_RX_STATUS     = 0x0800,
+        NETIF_MSG_PKTDATA       = 0x1000,
+        NETIF_MSG_HW            = 0x2000,
+        NETIF_MSG_WOL           = 0x4000,
+};
+
+enum netdev_queue_state_t {
+	__QUEUE_STATE_DRV_XOFF,
+	__QUEUE_STATE_STACK_XOFF,
+	__QUEUE_STATE_FROZEN,
+};
+
+//struct regmap *syscon_regmap_lookup_by_phandle(
+//					struct device_node *np,
+//					const char *property);
+//
+//int regmap_read(struct regmap *map, unsigned int reg, unsigned int *val);
+
+#define for_each_child_of_node(parent, child) \
+	for (child = of_get_next_child(parent, NULL); child != NULL; \
+	     child = of_get_next_child(parent, child))
+
+int of_machine_is_compatible(const char *compat);
+
+int of_device_is_compatible(const struct device_node *device,
+				   const char *);
+
+struct device *bus_find_device(struct bus_type *bus, struct device *start,
+			       void *data,
+			       int (*match)(struct device *dev, void *data));
+
+const struct of_device_id *of_match_node(
+	const struct of_device_id *matches, const struct device_node *node);
+
+struct resource *platform_get_resource_byname(struct platform_device *,
+						     unsigned int,
+						     const char *);
+struct property *of_find_property(const struct device_node *np,
+					 const char *name,
+					 int *lenp);
+
+static inline void dev_set_drvdata(struct device *dev, void *data)
+{
+	dev->driver_data = data;
+}
+
+u32 __raw_readl(const volatile void __iomem *addr);
+void __raw_writel(u32 val, volatile void __iomem *addr);
+
+#define cpu_relax()			//smp_mb()
+
+#define netdev_mc_empty(dev) netdev_hw_addr_list_empty(&(dev)->mc)
+
+// int netif_receive_skb(struct sk_buff *skb);
+
+
+#define netif_msg_intr(p)	((p)->msg_enable & NETIF_MSG_INTR)
+#define netif_msg_timer(p)	((p)->msg_enable & NETIF_MSG_TIMER)
+#define netif_msg_ifup(p)	((p)->msg_enable & NETIF_MSG_IFUP)
+
+static inline void netif_tx_stop_queue(struct netdev_queue *dev_queue)
+{
+	set_bit(__QUEUE_STATE_DRV_XOFF, &dev_queue->state);
+}
+
+
+void pm_runtime_disable(struct device *dev);
+int device_for_each_child(struct device *dev, void *data,
+		     int (*fn)(struct device *dev, void *data));
+void of_device_unregister(struct platform_device *ofdev);
+
+struct gpio_descs *__must_check devm_gpiod_get_array_optional(struct device *dev, const char *con_id,
+			      enum gpiod_flags flags);
+
+// HVB
+u32 netif_msg_init(int debug_value, int default_msg_enable_bits);
+void eth_random_addr(u8 *addr);
+
+#define to_platform_device(x) container_of((x), struct platform_device, dev)
+#define random_ether_addr(addr) eth_random_addr(addr)
+
+static struct bus_type platform_bus_type = {
+	.name = "platform",
+	//.dev_groups = platform_dev_groups,
+	//.match = platform_match,
+	//.pm = &platform_dev_pm_ops,
+};
 // HVB END
 
 #define platform_get_device_id(pdev) ((pdev)->id_entry)
@@ -313,6 +472,9 @@ struct net_device_ops {
 	int (*ndo_set_mac_address)(struct net_device *dev, void *addr);
 	int (*ndo_do_ioctl)(struct net_device *dev, struct ifreq *ifr, int cmd);
 	int (*ndo_set_features)(struct net_device *dev, netdev_features_t features);
+	//HVB
+	int	(*ndo_vlan_rx_add_vid)(struct net_device *dev, __be16 proto, u16 vid);
+	int	(*ndo_vlan_rx_kill_vid)(struct net_device *dev, __be16 proto, u16 vid);
 };
 
 struct net_device_stats {
@@ -385,6 +547,10 @@ struct net_device
 	struct                       device dev;
 	u16                          gso_max_segs;
 	struct phy_device           *phydev;
+	//HVB:
+	int                          irq;
+	unsigned long                trans_start;
+	struct netdev_queue	*_tx ____cacheline_aligned_in_smp;
 };
 
 static inline void *netdev_priv(const struct net_device *dev) {
@@ -758,6 +924,9 @@ struct ethtool_ops {
 			       const struct ethtool_tunable *, void *);
 	int(*set_tunable)(struct net_device *,
 			       const struct ethtool_tunable *, const void *);
+	//HVB
+  void	(*set_msglevel)(struct net_device *, u32);
+	u32	(*get_msglevel)(struct net_device *);
 };
 
 u32 ethtool_op_get_link(struct net_device *);
@@ -1492,6 +1661,28 @@ void *devm_kzalloc(struct device *dev, size_t size, gfp_t gfp);
 struct pm_qos_request {};
 
 #define dma_wmb() __asm__ __volatile__ ("dmb oshst" : : : "memory")
+
+
+//HVB
+static inline void napi_schedule(struct napi_struct *n)
+{
+	if (napi_schedule_prep(n))
+		__napi_schedule(n);
+}
+
+/**
+ *	netif_stop_queue - stop transmitted packets
+ *	@dev: network device
+ *
+ *	Stop upper layers calling the device hard_start_xmit routine.
+ *	Used for flow control when transmit resources are unavailable.
+ */
+static inline void netif_stop_queue(struct net_device *dev)
+{
+	netif_tx_stop_queue(netdev_get_tx_queue(dev, 0));
+}
+
+
 #include <lx_emul/extern_c_end.h>
 
 #endif /* _SRC__DRIVERS__NIC__CPSW__LX_EMUL_H_ */
