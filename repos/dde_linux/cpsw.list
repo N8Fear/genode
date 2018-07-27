@@ -1,12 +1,3 @@
-linux-x.x.x/drivers/base/bus.c
-linux-x.x.x/drivers/base/regmap/regcache-flat.c
-linux-x.x.x/drivers/base/regmap/regcache-lzo.c
-linux-x.x.x/drivers/base/regmap/regcache-rbtree.c
-linux-x.x.x/drivers/base/regmap/regcache.c
-linux-x.x.x/drivers/base/regmap/regmap-mmio.c
-linux-x.x.x/drivers/base/regmap/regmap.c
-linux-x.x.x/drivers/mfd/syscon.c
-linux-x.x.x/include/linux/regmap.h
 linux-x.x.x/drivers/net/ethernet/ti/cpsw_ale.c
 linux-x.x.x/drivers/net/ethernet/ti/cpsw_ale.h
 linux-x.x.x/drivers/net/ethernet/ti/cpsw-common.c
@@ -23,9 +14,6 @@ linux-x.x.x/drivers/net/phy/mdio_bus.c
 linux-x.x.x/drivers/net/phy/phy.c
 linux-x.x.x/drivers/net/phy/phy_device.c
 linux-x.x.x/lib/decompress_unlzo.c
-linux-x.x.x/lib/lzo/lzo1x_compress.c
-linux-x.x.x/lib/lzo/lzo1x_decompress_safe.c
-linux-x.x.x/lib/lzo/lzodefs.h
 linux-x.x.x/net/core/skbuff.c
 linux-x.x.x/net/ethernet/eth.c
 linux-x.x.x/include/asm-generic/atomic64.h

@@ -23,6 +23,7 @@
 #include <gpio_session/connection.h>
 #include <irq_session/client.h>
 #include <os/backtrace.h>
+#include <util/mmio.h>
 
 #include <component.h>
 #include <lx_emul.h>
@@ -38,7 +39,54 @@
 #include <lx_emul/impl/completion.h>
 #include <lx_kit/irq.h>
 
+#include <drivers/defs/am335x.h>
+
+
 extern "C" { struct page; }
+
+class Control_module : private Genode::Attached_io_mem_dataspace, Genode::Mmio
+{
+  private:
+	enum {
+				MAC_ID0_LO = 0x630,
+				MAC_ID0_HI = 0x634,
+				MAC_ID1_LO = 0x638,
+				MAC_ID1_HI = 0x63c,
+	};
+	struct mac_id0_lo : Register<0x630, 32> {};
+	struct mac_id0_hi : Register<0x634, 32> {};
+	struct mac_id1_lo : Register<0x638, 32> {};
+	struct mac_id1_hi : Register<0x63c, 32> {};
+  public:
+
+	Control_module(Genode::Env &env) : Genode::Attached_io_mem_dataspace(env, Am335x::CTR_MOD_BASE, Am335x::CTR_MOD_SIZE, false),
+																		 Genode::Mmio((Genode::addr_t)local_addr<void>()) { }
+
+  int regmap_read(unsigned int reg, unsigned int *val) {
+		switch (reg) {
+		case MAC_ID0_LO:
+			*val = read<mac_id0_lo>();
+			return 0;
+
+		case MAC_ID0_HI:
+			*val = read<mac_id0_hi>();
+			return 0;
+
+		case MAC_ID1_LO:
+			*val = read<mac_id1_lo>();
+			return 0;
+
+		case MAC_ID1_HI:
+			*val = read<mac_id1_hi>();
+			return 0;
+
+		default:
+			Genode::log("Failed to read register ", reg, " from CONTROL_MODULE");
+			return -1;
+		}
+	}
+
+};
 
 class Addr_to_page_mapping : public Genode::List<Addr_to_page_mapping>::Element
 {
@@ -586,11 +634,8 @@ int devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler
 struct clk *devm_clk_get(struct device *dev, const char *id)
 {
 	static struct clk clocks[] {
-		{ "ipg", 66*1000*1000 },
-		{ "ahb", 198*1000*1000 },
-		{ "ptp", 25*1000*1000 },
-		{ "enet_out", 25*1000*1000 },
-		{ "enet_clk_ref", 125*1000*1000 } };
+	  { "fck", 125*1000*1000 }
+	};
 
 	for (unsigned i = 0; i < (sizeof(clocks) / sizeof(struct clk)); i++)
 		if (Genode::strcmp(clocks[i].name, id) == 0)
@@ -1016,31 +1061,36 @@ int of_driver_match_device(struct device *dev, const struct device_driver *drv)
 }
 
 
+// HVB-Todo
 const void *of_get_property(const struct device_node *node, const char *name, int *lenp)
 {
 	Cpsw * cpsw = (Cpsw*) node;
-	if (Genode::strcmp("fsl,magic-packet", name) == 0) return (void*)cpsw->magic_packet;
+	//if (Genode::strcmp("fsl,magic-packet", name) == 0) return (void*)cpsw->magic_packet;
+	if (Genode::strcmp("phy_id", name) == 0) {
+		Genode::log(__PRETTY_FUNCTION__, " getting phy_id/not implemented");
+		return nullptr;
+	}
 
 	TRACE_AND_STOP;
 	return nullptr;
 }
 
 
-int of_property_read_u32(const struct device_node *np, const char *propname, u32 *out_value)
-{
-	Cpsw * cpsw = (Cpsw*) np;
-
-	if (Genode::strcmp("max-speed", propname) == 0) return 1;
-
-	if ((Genode::strcmp("fsl,num-tx-queues", propname) == 0) && cpsw->tx_queues)
-		*out_value = cpsw->tx_queues;
-	else if ((Genode::strcmp("fsl,num-rx-queues", propname) == 0) && cpsw->rx_queues)
-		*out_value = cpsw->rx_queues;
-	else
-		TRACE_AND_STOP;
-
-	return 0;
-}
+// int of_property_read_u32(const struct device_node *np, const char *propname, u32 *out_value)
+// {
+// 	Cpsw * cpsw = (Cpsw*) np;
+//
+// 	if (Genode::strcmp("max-speed", propname) == 0) return 1;
+//
+// 	if ((Genode::strcmp("fsl,num-tx-queues", propname) == 0) && cpsw->tx_queues)
+// 		*out_value = cpsw->tx_queues;
+// 	else if ((Genode::strcmp("fsl,num-rx-queues", propname) == 0) && cpsw->rx_queues)
+// 		*out_value = cpsw->rx_queues;
+// 	else
+// 		TRACE_AND_STOP;
+//
+// 	return 0;
+// }
 
 
 void *devm_kzalloc(struct device *dev, size_t size, gfp_t gfp)
@@ -1324,4 +1374,220 @@ int  bus_register(struct bus_type *bus)
 	TRACE;
 	return 0;
 }
+// HVB
+
+
+struct gpio_descs *__must_check
+devm_gpiod_get_array_optional(struct device *dev, const char *con_id,
+			      enum gpiod_flags flags)
+{
+	struct gpio_descs *descs;
+
+	Genode::log("in devm_gpiod_get_array_optional, returning empty value");
+  TRACE;
+	return descs;
+}
+/*
+ * fill in the appropriate values from the device tree files from the linux sources
+ *
+ * Maybe a Genode devicetree parser would be a good idea in the future.
+ */
+int of_property_read_u32(const struct device_node *np, const char *propname, u32 *out_value)
+{
+
+	Cpsw * cpsw = (Cpsw*) np;
+
+ 	if (Genode::strcmp("slaves", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: slaves");
+		*out_value = 2;
+	}
+
+ 	else if (Genode::strcmp("active_slave", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: active_slave");
+		*out_value = 0;
+	}
+
+ 	else if (Genode::strcmp("cpts_clock_mult", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: clock_mult");
+		*out_value = 0x80000000;
+	}
+
+ 	else if (Genode::strcmp("cpts_clock_shift", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: clock_shift");
+		*out_value = 29;
+	}
+
+ 	else if (Genode::strcmp("cpdma_channels", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: cpdma_channels");
+		*out_value = 8;
+	}
+
+ 	else if (Genode::strcmp("ale_entries", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: ale_entries");
+		*out_value = 1024;
+	}
+
+ 	else if (Genode::strcmp("bd_ram_size", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: bd_ram_size");
+		*out_value = 0x2000;
+	}
+
+ 	else if (Genode::strcmp("rx_descs", propname) == 0) {
+		Genode::log("of_property_read_u32: query for: rx_descs");
+		Genode::log("of_property_read_u32: not yet implemented");
+	}
+
+ 	else if (Genode::strcmp("mac_control", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: mac_control");
+		*out_value = 0x20;
+	}
+
+ 	else if (Genode::strcmp("dual_emac_res_vlan", propname) == 0) {
+		Genode::log("of_property_read_u32: query for: dual_emac_res_vlan");
+		*out_value = 1; // for emac0, emac1 needs to return 2
+	}
+
+ 	else if (Genode::strcmp("bus_freq", propname) == 0) {
+		Genode::log("of_property_read_u32: query for: bus_freq");
+		Genode::log("of_property_read_u32: from davinci_mdio child node?");
+	  *out_value = 1000000;
+	}
+
+ 	else if (Genode::strcmp("reg", propname) == 0) {
+		Genode::log("of_property_read_u32: query for: reg");
+		Genode::log("of_property_read_u32: from davinci_mdio child node?");
+		*out_value = 0x4a101000; // Adress of MDIO, in dt there is <0x4a101000 0x100> is the 0x100 the size?
+
+	}
+
+ 	else if (Genode::strcmp("max_speed", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: max_speed");
+		TRACE_AND_STOP;
+	}
+
+ 	else if (Genode::strcmp("big_endian", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: big_endian");
+		TRACE_AND_STOP;
+	}
+
+ 	else if (Genode::strcmp("little_endian", propname) == 0) {
+		//		Genode::log("of_property_read_u32: query for: little_endian");
+		TRACE_AND_STOP;
+	}
+ 	else
+ 		TRACE_AND_STOP;
+
+ 	return 0;
+}
+
+bool of_property_read_bool(const struct device_node *np,
+					 const char *propname)
+{
+	Cpsw * cpsw = (Cpsw*) np;
+
+ 	if (Genode::strcmp("dual_emac", propname) == 0) {
+		//		Genode::log("of_property_read_bool: query for: dual_emac");
+		return true;
+	}
+
+	return false;
+
+}
+
+/* Populates platform_devices from device tree data */
+int of_platform_populate(struct device_node *root,
+				const struct of_device_id *matches,
+				const struct of_dev_auxdata *lookup,
+				struct device *parent)
+{
+	TRACE;
+	return 0;
+}
+
+struct device_node *of_get_next_child(const struct device_node *node,
+					     struct device_node *prev)
+{
+	TRACE;
+	Cpsw * cpsw = (Cpsw*) node;
+	// TODO hvb - most likely extend/modify struct
+	return (struct device_node*) cpsw;
+}
+
+extern "C" int strcmp(const char *s1, const char *s2) {
+	// called in cpsw.c by "if(strcmp(slave_node->name, "slave")) return warning about no slave nodes)
+	//return Genode::strcmp(s1, s2);
+	TRACE;
+	return 0;
+}
+
+/* Returns positive integer if machine is compatible */
+int of_machine_is_compatible(const char *compat)
+{
+ 	if (Genode::strcmp("ti,am33xx", compat) == 0) {
+		Genode::log("of_device_is_compatible check: ti,33xx compatible");
+		return 42;
+	}
+ 	else if (Genode::strcmp("ti,am4372", compat) == 0) {
+		//		Genode::log("of_device_is_compatible check: ti,am4372 not compatible");
+		return 0;
+	}
+ 	else if (Genode::strcmp("ti,dm8148", compat) == 0) {
+		//Genode::log("of_device_is_compatible check: ti,dm8148 not compatible");
+		return 0;
+	}
+ 	else if (Genode::strcmp("ti,dra7", compat) == 0) {
+		//Genode::log("of_device_is_compatible check: ti,dra7 not compatible");
+		return 0;
+	}
+	else
+		TRACE_AND_STOP;
+		return 0;
+}
+
+struct regmap *syscon_regmap_lookup_by_phandle(struct device_node *np,
+					const char *property)
+{
+	TRACE;
+}
+
+void eth_random_addr(u8 *addr)
+{
+  get_random_bytes(addr, ETH_ALEN);
+	addr[0] &= 0xfe;	/* clear multicast bit */
+	addr[0] |= 0x02;	/* set local assignment bit (IEEE802) */
+}
+
+/* Just return 0 - just like the other pm_* functions */
+int pm_runtime_put_sync(struct device *dev)
+{
+	TRACE;
+	return 0;
+}
+
+/* Return 0 for no match, positive integer for match */
+int of_device_is_compatible(const struct device_node *device,
+				   const char * compat)
+{
+ 	if (Genode::strcmp("ti,am3517-emac", compat) == 0) {
+		Genode::log("of_device_is_compatible check: ti,am3517-emac");
+		return 0;
+	}
+ 	else if (Genode::strcmp("ti,dm816-emac", compat) == 0) {
+		Genode::log("of_device_is_compatible check: ti,dm816-emac");
+		return 0;
+	}
+ 	else if (Genode::strcmp("syscon", compat) == 0) {
+		Genode::log("of_device_is_compatible check: syscon");
+		return 0;
+	}
+	else
+		TRACE_AND_STOP;
+}
+
+/* Is used to read the MAC address of the NICs */
+int regmap_read(struct regmap *map, unsigned int reg, unsigned int *val) {
+	Control_module ctr_mod(Lx_kit::env().env());
+	return ctr_mod.regmap_read(reg, val);
+}
+
 }

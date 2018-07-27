@@ -3,7 +3,7 @@ REQUIRES = cpsw
 
 TARGET   = nic_drv
 LIBS     = base lx_kit_setjmp cpsw_nic_include
-SRC_CC   = main.cc platform.cc lx_emul.cc component.cc
+SRC_CC   = main.cc platform.cc lx_emul.cc component.cc random.cc
 SRC_C   += dummy.c lxc.c
 INC_DIR += $(PRG_DIR)
 
