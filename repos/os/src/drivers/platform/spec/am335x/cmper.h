@@ -412,6 +412,9 @@ class Cmper : public Regulator::Driver,
 		void _enable(Regulator_id id)
 		{
 			switch (id) {
+			case CLK_UART_1:
+				_enable_uart_clock();
+				break;
 			default:
 				Genode::warning("enabling regulator unsupported for ", names[id].name);
 			}
@@ -425,15 +428,15 @@ class Cmper : public Regulator::Driver,
 			}
 		}
 public:
-	//	  	void enable_uart_clock()
-	//	  	{
-	//	  		Genode::log("Enable UART clock...");
-	//	  		write<cm_per_uart1_clkctrl::modulemode>(2);
-	//	  		while (read<cm_per_uart1_clkctrl::modulemode>() != 2);
-	//	  		while (!(read<cm_per_l4ls_clkstctrl::clkactivity_l4ls_gclk>() == 1
-	//	  		      && read<cm_per_l4ls_clkstctrl::clkactivity_uart_gfclk>() == 1));
-	//	  		Genode::log("UART clocks in CM_PER enabled.");
-	//	  	}
+		  	void _enable_uart_clock()
+		  	{
+		  		Genode::log("Enable UART clock...");
+		  		write<cm_per_uart1_clkctrl::modulemode>(2);
+		  		while (read<cm_per_uart1_clkctrl::modulemode>() != 2);
+		  		while (!(read<cm_per_l4ls_clkstctrl::clkactivity_l4ls_gclk>() == 1
+		  		      && read<cm_per_l4ls_clkstctrl::clkactivity_uart_gfclk>() == 1));
+		  		Genode::log("UART clocks in CM_PER enabled.");
+		  	}
 	//
 	//	  	void enable_cpsw_clock()
 	//	  	{
