@@ -16,11 +16,14 @@
 #include <base/log.h>
 #include <base/heap.h>
 #include <base/component.h>
+// #include <base/attached_rom_dataspace.h>
 #include <regulator/component.h>
 #include <regulator/consts.h>
 
 #include <cmper.h>
 #include <cmdpll.h>
+
+using namespace Genode;
 
 struct Driver_factory : Regulator::Driver_factory
 {
@@ -28,21 +31,26 @@ struct Driver_factory : Regulator::Driver_factory
 	Cmdpll _cmdpll;
 
 	Driver_factory(Genode::Env &env) : _cmper(env), _cmdpll(env) { }
+	// Attached_rom_dataspace config {env, "config"};
 
 	Regulator::Driver &create(Regulator::Regulator_id id)
 	override
 	{
-		switch (id)
+		switch (id) {
+			case Regulator::CLK_UART_1:
+			//case Regulator::CLK_UART_2:
+			//case Regulator::CLK_UART_3:
 		//case Regulator::PWR_1: // for example
 		//case Regulator::PWR_2: // for example
-		//  return _cmper;
+		  return _cmper;
 
 		//case Regulator::CLK_1: // for example
 		//case Regulator::CLK_2: // for example
 		//  return _cmdpll;
 
-	default:
-		throw Genode::Service_denied();
+	  default:
+	  	throw Genode::Service_denied();
+	  }
 	}
 
 	void destroy(Regulator::Driver &) override { }

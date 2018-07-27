@@ -21,6 +21,10 @@
 namespace Regulator {
 
 	enum Regulator_id {
+		CLK_UART_1,
+		CLK_UART_2,
+		CLK_UART_3,
+
 		PWR_UART_1,
 		PWR_UART_2,
 		PWR_UART_3,
@@ -37,6 +41,12 @@ namespace Regulator {
 	};
 
 	static constexpr Regulator_name names[] = {
+		                                          { CLK_UART_1, "uart1 clock"
+},
+		                                          { CLK_UART_2, "uart1 clock"
+},
+		                                          { CLK_UART_3, "uart1 clock"
+},
 		                                          { PWR_UART_1, "power-uart1"
 },
 		                                          { PWR_UART_2, "power-uart2"
@@ -50,12 +60,10 @@ namespace Regulator {
 		                                          { PWR_GPIO_2, "power-gpio2"
 },
 	                                          };
-
 	inline Regulator_id regulator_id_by_name(const char * name)
 	{
-		for (unsigned i = 0; i < sizeof(names)/sizeof(names[0]); i++)
-			if (Genode::strcmp(names[i].name, name) == 0)
-				return names[i].id;
+		for (unsigned i = 0; i < sizeof(names)/sizeof(names[0]); i++) 			if (Genode::strcmp(names[i].name, name) == 0)
+			return names[i].id;
 		return INVALID;
 	}
 
