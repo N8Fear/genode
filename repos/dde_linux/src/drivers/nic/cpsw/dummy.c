@@ -273,12 +273,6 @@ void put_device(struct device *dev)
 	TRACE_AND_STOP;
 }
 
-int    strcmp(const char *s1, const char *s2)
-{
-	TRACE_AND_STOP;
-	return -1;
-}
-
 void class_unregister(struct class *cls)
 {
 	TRACE_AND_STOP;
@@ -307,21 +301,7 @@ void __raw_writel(u32 val, volatile void __iomem *addr)
 	TRACE_AND_STOP;
 }
 
-int of_machine_is_compatible(const char *compat)
-{
-	TRACE_AND_STOP;
-}
 
-int pm_runtime_put_sync(struct device *dev)
-{
-	TRACE_AND_STOP;
-}
-
-struct regmap *syscon_regmap_lookup_by_phandle(struct device_node *np,
-					const char *property)
-{
-	TRACE_AND_STOP;
-}
 
 //int netif_receive_skb(struct sk_buff *skb)
 //{
@@ -343,11 +323,6 @@ void of_device_unregister(struct platform_device *ofdev)
 	TRACE_AND_STOP;
 }
 
-int of_device_is_compatible(const struct device_node *device,
-				   const char * compat)
-{
-	TRACE_AND_STOP;
-}
 
 struct platform_device *of_find_device_by_node(struct device_node *np)
 {
@@ -366,12 +341,6 @@ struct property *of_find_property(const struct device_node *np,
 	TRACE_AND_STOP;
 }
 
-struct device_node *of_get_next_child(const struct device_node *node,
-					     struct device_node *prev)
-{
-	TRACE_AND_STOP;
-}
-
 const struct of_device_id *of_match_node(
 	const struct of_device_id *matches, const struct device_node *node)
 {
@@ -379,21 +348,6 @@ const struct of_device_id *of_match_node(
 }
 
 struct phy_device *of_phy_find_device(struct device_node *phy_np)
-{
-	TRACE_AND_STOP;
-}
-
-int of_platform_populate(struct device_node *root,
-				const struct of_device_id *matches,
-				const struct of_dev_auxdata *lookup,
-				struct device *parent)
-{
-	TRACE_AND_STOP;
-	return -1;
-}
-
-bool of_property_read_bool(const struct device_node *np,
-					 const char *propname)
 {
 	TRACE_AND_STOP;
 }
@@ -425,12 +379,6 @@ void devm_kfree(struct device *dev, void *p)
 	TRACE_AND_STOP;
 }
 
-struct gpio_descs *__must_check
-devm_gpiod_get_array_optional(struct device *dev, const char *con_id,
-			      enum gpiod_flags flags)
-{
-	TRACE_AND_STOP;
-}
 
 int device_for_each_child(struct device *parent, void *data,
 			  int (*fn)(struct device *dev, void *data))
@@ -465,19 +413,20 @@ bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 	TRACE_AND_STOP;
 }
 
-void eth_random_addr(u8 *addr)
-{
-	TRACE_AND_STOP;
-}
-
 bool is_broadcast_ether_addr(const u8 *addr)
 {
 	TRACE_AND_STOP;
 }
 
 u32 netif_msg_init(int debug_value, int default_msg_enable_bits)
-{
-	TRACE_AND_STOP;
+{	/* use default */
+	if (debug_value < 0 || debug_value >= (sizeof(u32) * 8))
+		return default_msg_enable_bits;
+	if (debug_value == 0)	/* no output */
+		return 0;
+	/* set low N bits */
+	return (1 << debug_value) - 1;
+
 }
 
 // HVB end

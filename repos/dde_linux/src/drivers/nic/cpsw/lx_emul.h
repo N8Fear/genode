@@ -265,6 +265,8 @@ struct platform_device {
 };
 
 //HVB
+void get_random_bytes(void *buf, int nbytes);
+
 #define alloc_etherdev(sizeof_priv) alloc_etherdev_mq(sizeof_priv, 1)
 #define alloc_etherdev_mq(sizeof_priv, count) alloc_etherdev_mqs(sizeof_priv, count, count)
 
