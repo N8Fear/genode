@@ -261,10 +261,30 @@ struct platform_device {
 	const char * name;
 	struct device dev;
 	int id;
+	u32 num_resources;
+	struct resource *resource;
 	const struct platform_device_id * id_entry;
 };
 
 //HVB
+#define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+#define __ALIGN_MASK(x, mask)	__ALIGN_KERNEL_MASK((x), (mask))
+
+#define find_first_zero_bit(p,sz)	_find_first_zero_bit_le(p,sz)
+#define find_next_zero_bit(p,sz,off)	find_next_zero_bit_le(p,sz,off)
+#define find_first_bit(p,sz)		_find_first_bit_le(p,sz)
+#define find_next_bit(p,sz,off)		find_next_bit_le(p,sz,off)
+
+#define BITMAP_FIRST_WORD_MASK(start) (~0UL << ((start) & (BITS_PER_LONG - 1)))
+#define BITMAP_LAST_WORD_MASK(nbits) (~0UL >> (-(nbits) & (BITS_PER_LONG - 1)))
+
+
+unsigned long bitmap_find_next_zero_area(unsigned long *map,
+			   unsigned long size,
+			   unsigned long start,
+			   unsigned int nr,
+													 unsigned long align_mask);
+
 void get_random_bytes(void *buf, int nbytes);
 
 #define alloc_etherdev(sizeof_priv) alloc_etherdev_mq(sizeof_priv, 1)
