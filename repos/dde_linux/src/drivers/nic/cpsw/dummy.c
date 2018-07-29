@@ -84,11 +84,6 @@ void free_irq(unsigned int irq, void *dev_id)
 	TRACE_AND_STOP;
 }
 
-void free_netdev(struct net_device * d)
-{
-	TRACE_AND_STOP;
-}
-
 bool gfp_pfmemalloc_allowed(gfp_t g)
 {
 	TRACE_AND_STOP;
@@ -291,16 +286,6 @@ void driver_unregister(struct device_driver *drv)
 
 //HVB
 
-u32 __raw_readl(const volatile void __iomem *addr)
-{
-	TRACE_AND_STOP;
-}
-
-void __raw_writel(u32 val, volatile void __iomem *addr)
-{
-	TRACE_AND_STOP;
-}
-
 
 
 //int netif_receive_skb(struct sk_buff *skb)
@@ -308,15 +293,6 @@ void __raw_writel(u32 val, volatile void __iomem *addr)
 //	TRACE_AND_STOP;
 //}
 
-void bitmap_set(unsigned long *map, unsigned int start, int len)
-{
-	TRACE_AND_STOP;
-}
-
-void bitmap_clear(unsigned long *map, unsigned int start, int len)
-{
-	TRACE_AND_STOP;
-}
 
 void of_device_unregister(struct platform_device *ofdev)
 {
@@ -359,16 +335,6 @@ struct resource *platform_get_resource_byname(struct platform_device *dev,
 	TRACE_AND_STOP;
 }
 
-void iounmap(volatile void __iomem *cookie)
-{
-	TRACE_AND_STOP;
-}
-
-__iomem *ioremap(resource_size_t res_cookie, size_t size)
-{
-	TRACE_AND_STOP;
-}
-
 int netif_receive_skb(struct sk_buff *skb)
 {
 	TRACE_AND_STOP;
@@ -389,26 +355,6 @@ int device_for_each_child(struct device *parent, void *data,
 struct device *bus_find_device(struct bus_type *bus,
 			       struct device *start, void *data,
 			       int (*match)(struct device *dev, void *data))
-{
-	TRACE_AND_STOP;
-}
-unsigned long
-bitmap_find_next_zero_area(unsigned long *map,
-			   unsigned long size,
-			   unsigned long start,
-			   unsigned int nr,
-			   unsigned long align_mask)
-
-{
-	TRACE_AND_STOP;
-}
-
-void pm_runtime_disable(struct device *dev)
-{
-	TRACE_AND_STOP;
-}
-
-bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 {
 	TRACE_AND_STOP;
 }
