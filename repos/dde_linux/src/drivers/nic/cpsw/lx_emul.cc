@@ -38,6 +38,7 @@
 #include <lx_emul/impl/timer.h>
 #include <lx_emul/impl/completion.h>
 #include <lx_kit/irq.h>
+//#include <lx_kit/mapped_io_mem_range.h>
 
 #include <drivers/defs/am335x.h>
 
@@ -86,6 +87,16 @@ class Control_module : private Genode::Attached_io_mem_dataspace, Genode::Mmio
 		}
 	}
 
+};
+
+static resource _cpsw_resource[] =
+{
+ {0x4a100000, 0x800, "cpsw-regs", IORESOURCE_MEM },
+ {0x4a101200, 0x100, "cpsw-regs", IORESOURCE_MEM },
+ { 0x28, 0x28, "3pgswrxthr0-irq" /* name unused */, IORESOURCE_IRQ },
+ { 0x29, 0x29, "3pgwsrxint0-irq" /* name unused */, IORESOURCE_IRQ },
+ { 0x2a, 0x2a, "3pgwstxint0-irq" /* name unused */, IORESOURCE_IRQ },
+ { 0x2b, 0x2b, "3pgwsmisc0-irq" /* name unused */, IORESOURCE_IRQ },
 };
 
 class Addr_to_page_mapping : public Genode::List<Addr_to_page_mapping>::Element
@@ -310,7 +321,7 @@ struct Cpsw
 	const int                         rx_queues;
 	struct net_device *               net_dev { nullptr };
 	Session_component *               session { nullptr };
-	Genode::Attached_io_mem_dataspace io_ds   { Lx_kit::env().env(), mmio, 0x4000 };
+	Genode::Attached_io_mem_dataspace io_ds   { Lx_kit::env().env(), mmio, 0x2000 }; // Size is not 0x8000 because cpdma wants CPPI_RAM register
 	Genode::Constructible<Mdio>       mdio;
 	Mdio::Phy *                       phy { nullptr };
 
@@ -417,6 +428,8 @@ int platform_driver_register(struct platform_driver * drv)
 		pd->name         = cpsw_devices[i]->name.string();
 		pd->dev.of_node  = (device_node*) &cpsw_devices[i];
 		pd->dev.plat_dev = pd;
+		pd->resource = _cpsw_resource;
+		pd->num_resources = 6;
 		drv->probe(pd);
 		{
 			net_device * dev = cpsw_devices[i]->net_dev;
@@ -485,6 +498,30 @@ void * devm_ioremap_resource(struct device *dev, struct resource *res)
 }
 
 
+void *_ioremap(phys_addr_t phys_addr, size_t size, int wc)
+{
+	try {
+		Genode::Attached_io_mem_dataspace *ds = new(Lx::Malloc::mem())
+			Genode::Attached_io_mem_dataspace(phys_addr, size, !!wc);
+		return ds->local_addr<void>();
+	}catch (...) {
+		panic("Failed to request I/O memory: (%lx,%lx)", (long unsigned int)phys_addr, phys_addr + size);
+			return 0;
+	}
+}
+
+/* More elegant solution like in devm_ioremap would be better */
+void *ioremap(phys_addr_t offset, size_t size) {
+	// return Lx::ioremap(offset, size, Genode::UNCACHED); /* TODO - evaluate if lxkit function can be ported/made usable */
+	return _ioremap(offset, size, 0);
+}
+
+
+void iounmap(volatile void __iomem *cookie)
+{
+	Genode::log("Tried to unmap memory: ", cookie);
+	TRACE;
+}
 void platform_set_drvdata(struct platform_device *pdev, void *data)
 {
 	pdev->dev.driver_data = data;
@@ -616,7 +653,7 @@ int netif_device_present(struct net_device * d)
 
 int platform_get_irq(struct platform_device * d, unsigned int i)
 {
-	if (i > 1) return -1;
+	if (i > 4) return -1;
 
 	Cpsw * cpsw = (Cpsw*) d->dev.of_node;
 
@@ -947,6 +984,24 @@ unsigned long find_next_bit(const unsigned long *addr, unsigned long size, unsig
 	return size;
 }
 
+long find_next_zero_bit_le(const void *addr,
+                           unsigned long size, unsigned long offset)
+{
+        static unsigned cnt = 0;
+        unsigned long max_size = sizeof(long) * 8;
+        if (offset >= max_size) {
+					Genode::warning("Offset greater max size:", offset, " max: ", max_size);
+                return offset + size;
+        }
+
+        for (; offset < max_size; offset++)
+                if (!(*(unsigned long*)addr & (1L << offset)))
+                        return offset;
+
+        return offset + size;
+}
+
+
 
 gro_result_t napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 {
@@ -1076,23 +1131,6 @@ const void *of_get_property(const struct device_node *node, const char *name, in
 }
 
 
-// int of_property_read_u32(const struct device_node *np, const char *propname, u32 *out_value)
-// {
-// 	Cpsw * cpsw = (Cpsw*) np;
-//
-// 	if (Genode::strcmp("max-speed", propname) == 0) return 1;
-//
-// 	if ((Genode::strcmp("fsl,num-tx-queues", propname) == 0) && cpsw->tx_queues)
-// 		*out_value = cpsw->tx_queues;
-// 	else if ((Genode::strcmp("fsl,num-rx-queues", propname) == 0) && cpsw->rx_queues)
-// 		*out_value = cpsw->rx_queues;
-// 	else
-// 		TRACE_AND_STOP;
-//
-// 	return 0;
-// }
-
-
 void *devm_kzalloc(struct device *dev, size_t size, gfp_t gfp)
 {
 	if (size > 2048) Genode::warning("devm_kzalloc ", size);
@@ -1220,13 +1258,27 @@ int pinctrl_pm_select_sleep_state(struct device *dev)
 	return -1;
 }
 
-struct resource *platform_get_resource(struct platform_device * d, unsigned r1, unsigned r2)
+struct resource *platform_get_resource(struct platform_device *dev, unsigned type, unsigned num)
 {
+	unsigned i;
+
+	for (i = 0; i <dev->num_resources; i++) {
+		struct resource *r = &dev->resource[i];
+
+		if ((type == r->flags) && num-- == 0)
+			return r;
+	}
+
 	TRACE;
 	return nullptr;
 }
 
 void pm_runtime_enable(struct device *dev)
+{
+	TRACE;
+}
+
+void pm_runtime_disable(struct device *dev)
 {
 	TRACE;
 }
@@ -1524,7 +1576,7 @@ extern "C" int strcmp(const char *s1, const char *s2) {
 int of_machine_is_compatible(const char *compat)
 {
  	if (Genode::strcmp("ti,am33xx", compat) == 0) {
-		Genode::log("of_device_is_compatible check: ti,33xx compatible");
+		// Genode::log("of_device_is_compatible check: ti,33xx compatible");
 		return 42;
 	}
  	else if (Genode::strcmp("ti,am4372", compat) == 0) {
@@ -1547,7 +1599,6 @@ int of_machine_is_compatible(const char *compat)
 struct regmap *syscon_regmap_lookup_by_phandle(struct device_node *np,
 					const char *property)
 {
-	TRACE;
 }
 
 void eth_random_addr(u8 *addr)
@@ -1569,15 +1620,15 @@ int of_device_is_compatible(const struct device_node *device,
 				   const char * compat)
 {
  	if (Genode::strcmp("ti,am3517-emac", compat) == 0) {
-		Genode::log("of_device_is_compatible check: ti,am3517-emac");
+		 Genode::log("of_device_is_compatible check: ti,am3517-emac");
 		return 0;
 	}
  	else if (Genode::strcmp("ti,dm816-emac", compat) == 0) {
-		Genode::log("of_device_is_compatible check: ti,dm816-emac");
+		 Genode::log("of_device_is_compatible check: ti,dm816-emac");
 		return 0;
 	}
  	else if (Genode::strcmp("syscon", compat) == 0) {
-		Genode::log("of_device_is_compatible check: syscon");
+		 Genode::log("of_device_is_compatible check: syscon");
 		return 0;
 	}
 	else
@@ -1590,4 +1641,115 @@ int regmap_read(struct regmap *map, unsigned int reg, unsigned int *val) {
 	return ctr_mod.regmap_read(reg, val);
 }
 
+u32 __raw_readl(const volatile void __iomem *addr)
+{
+  return *(const volatile u32 __force *) addr;
+}
+
+void __raw_writel(u32 val, volatile void __iomem *addr)
+{
+	 *(volatile u32 __force *) addr = val;
+}
+
+void free_netdev(struct net_device * d)
+{
+	Genode::log("In free_netdev");
+	TRACE;
+}
+
+bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
+{
+	TRACE;
+	//HVB: TODO
+	return true;
+}
+
+/**
+ * bitmap_find_next_zero_area_off - find a contiguous aligned zero area
+ * @map: The address to base the search on
+ * @size: The bitmap size in bits
+ * @start: The bitnumber to start searching at
+ * @nr: The number of zeroed bits we're looking for
+ * @align_mask: Alignment mask for zero area
+ * @align_offset: Alignment offset for zero area.
+ *
+ * The @align_mask should be one less than a power of 2; the effect is that
+ * the bit offset of all zero areas this function finds plus @align_offset
+ * is multiple of that power of 2.
+ */
+unsigned long bitmap_find_next_zero_area_off(unsigned long *map,
+					     unsigned long size,
+					     unsigned long start,
+					     unsigned int nr,
+					     unsigned long align_mask,
+					     unsigned long align_offset)
+{
+	unsigned long index, end, i;
+again:
+	index = find_next_zero_bit(map, size, start);
+
+	/* Align allocation */
+	index = __ALIGN_MASK(index + align_offset, align_mask) - align_offset;
+
+	end = index + nr;
+	if (end > size)
+		return end;
+	i = find_next_bit(map, end, index);
+	if (i < end) {
+		start = i + 1;
+		goto again;
+	}
+	return index;
+}
+
+unsigned long bitmap_find_next_zero_area(unsigned long *map,
+			   unsigned long size,
+			   unsigned long start,
+			   unsigned int nr,
+			   unsigned long align_mask)
+{
+	return bitmap_find_next_zero_area_off(map, size, start, nr,
+					      align_mask, 0);
+}
+
+void bitmap_set(unsigned long *map, unsigned int start, int len)
+{
+        unsigned long *p = map + BIT_WORD(start);
+        const unsigned int size = start + len;
+        int bits_to_set = BITS_PER_LONG - (start % BITS_PER_LONG);
+        unsigned long mask_to_set = BITMAP_FIRST_WORD_MASK(start);
+
+        while (len - bits_to_set >= 0) {
+                *p |= mask_to_set;
+                len -= bits_to_set;
+                bits_to_set = BITS_PER_LONG;
+                mask_to_set = ~0UL;
+                p++;
+        }
+        if (len) {
+                mask_to_set &= BITMAP_LAST_WORD_MASK(size);
+                *p |= mask_to_set;
+        }
+}
+
+
+void bitmap_clear(unsigned long *map, unsigned int start, int len)
+{
+	unsigned long *p = map + BIT_WORD(start);
+	const unsigned int size = start + len;
+	int bits_to_clear = BITS_PER_LONG - (start % BITS_PER_LONG);
+	unsigned long mask_to_clear = BITMAP_FIRST_WORD_MASK(start);
+
+	while (len - bits_to_clear >= 0) {
+		*p &= ~mask_to_clear;
+		len -= bits_to_clear;
+		bits_to_clear = BITS_PER_LONG;
+		mask_to_clear = ~0UL;
+		p++;
+	}
+	if (len) {
+		mask_to_clear &= BITMAP_LAST_WORD_MASK(size);
+		*p &= ~mask_to_clear;
+	}
+}
 }
