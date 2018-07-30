@@ -391,9 +391,19 @@ enum netdev_queue_state_t {
 //
 //int regmap_read(struct regmap *map, unsigned int reg, unsigned int *val);
 
+#define SET_LATE_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn) \
+	.suspend_late = suspend_fn, \
+	.resume_early = resume_fn, \
+	.freeze_late = suspend_fn, \
+	.thaw_early = resume_fn, \
+	.poweroff_late = suspend_fn, \
+	.restore_early = resume_fn,
+
 #define for_each_child_of_node(parent, child) \
 	for (child = of_get_next_child(parent, NULL); child != NULL; \
 	     child = of_get_next_child(parent, child))
+
+#define of_match_ptr(_ptr)	(_ptr)
 
 int of_machine_is_compatible(const char *compat);
 
@@ -947,6 +957,18 @@ struct ethtool_ops {
 	int(*set_tunable)(struct net_device *,
 			       const struct ethtool_tunable *, const void *);
 	//HVB
+#define CONFIG_TI_CPSW 1
+#define CONFIG_TI_DAVINCI_CPDMA 1
+#define CONFIG_TI_DAVINCI_MDIO 1
+#define CONFIG_TI_CPSW_PHY_SEL 1
+#define CONFIG_TI_CPSW_ALE 1
+#define CONFIG_MFD_SYSCON 1
+#define CONFIG_REGMAP 1
+#define CONFIG_PHYLIB 1
+#define CONFIG_OF 1
+
+
+
   void	(*set_msglevel)(struct net_device *, u32);
 	u32	(*get_msglevel)(struct net_device *);
 };

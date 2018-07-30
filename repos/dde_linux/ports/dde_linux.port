@@ -219,6 +219,5 @@ PATCH_OPT(patches/fec_tx_bounce_dma.patch) := -p1 -d$(SRC_DIR_FEC)
 
 # TI Davinci/CPSW NIC
 PATCH_OPT(patches/cpsw_skbuff_cast.patch) := -p1 -d$(SRC_DIR_CPSW)
-PATCH_OPT(patches/cpsw_comment_out_reference_to_davinci_mdio_of_mtable.patch) := -p1 -d$(SRC_DIR_CPSW)
 
 # vi: set ft=make :
