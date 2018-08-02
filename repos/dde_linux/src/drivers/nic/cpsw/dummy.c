@@ -299,38 +299,7 @@ void of_device_unregister(struct platform_device *ofdev)
 	TRACE_AND_STOP;
 }
 
-
-struct platform_device *of_find_device_by_node(struct device_node *np)
-{
-	TRACE_AND_STOP;
-}
-
-struct device_node *of_find_node_by_phandle(phandle handle)
-{
-	TRACE_AND_STOP;
-}
-
-struct property *of_find_property(const struct device_node *np,
-					 const char *name,
-					 int *lenp)
-{
-	TRACE_AND_STOP;
-}
-
-const struct of_device_id *of_match_node(
-	const struct of_device_id *matches, const struct device_node *node)
-{
-	TRACE_AND_STOP;
-}
-
 struct phy_device *of_phy_find_device(struct device_node *phy_np)
-{
-	TRACE_AND_STOP;
-}
-
-struct resource *platform_get_resource_byname(struct platform_device *dev,
-					      unsigned int type,
-					      const char *name)
 {
 	TRACE_AND_STOP;
 }
@@ -374,6 +343,18 @@ u32 netif_msg_init(int debug_value, int default_msg_enable_bits)
 	return (1 << debug_value) - 1;
 
 }
+//Davinci mdio begin
+
+void spin_lock(spinlock_t *lock)
+{
+  TRACE_AND_STOP;
+}
+
+void devres_free(void *res)
+{
+  TRACE_AND_STOP;
+}
+//Davinci mdio end
 
 // HVB end
 
