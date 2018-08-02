@@ -198,10 +198,20 @@ static inline s64 timespec64_to_ns(const struct timespec64 *ts)
 
 ktime_t ns_to_ktime(u64 ns);
 
+struct property {
+	char * name;
+	int length;
+	void *value;
+};
+
 struct device_node
 {
 	const char * name;
 	const char * full_name;
+	struct property * properties;
+	struct device_node *parent;
+	struct device_node *child;
+	struct device_node *sibling;
 };
 
 struct device;
@@ -267,6 +277,14 @@ struct platform_device {
 };
 
 //HVB
+// Davinci Mdio
+void spin_lock(spinlock_t *lock);
+int of_get_child_count(const struct device_node *np);
+void devres_add(struct device *dev, void *res);
+void devres_free(void *res);
+// Mdio end
+
+
 #define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
 #define __ALIGN_MASK(x, mask)	__ALIGN_KERNEL_MASK((x), (mask))
 
@@ -391,13 +409,13 @@ enum netdev_queue_state_t {
 //
 //int regmap_read(struct regmap *map, unsigned int reg, unsigned int *val);
 
-#define SET_LATE_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn) \
-	.suspend_late = suspend_fn, \
-	.resume_early = resume_fn, \
-	.freeze_late = suspend_fn, \
-	.thaw_early = resume_fn, \
-	.poweroff_late = suspend_fn, \
-	.restore_early = resume_fn,
+//#define SET_LATE_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn) \
+//	.suspend_late = suspend_fn, \
+//	.resume_early = resume_fn, \
+//	.freeze_late = suspend_fn, \
+//	.thaw_early = resume_fn, \
+//	.poweroff_late = suspend_fn, \
+//	.restore_early = resume_fn,
 
 #define for_each_child_of_node(parent, child) \
 	for (child = of_get_next_child(parent, NULL); child != NULL; \
@@ -811,6 +829,9 @@ bool netif_queue_stopped(const struct net_device *dev);
 #define CONFIG_ARCH_MXC 1
 #define CONFIG_OF_MDIO  1
 #define CONFIG_PTP_1588_CLOCK 1
+// Check if needed
+//#define CONFIG_PM_SLEEP 1
+//#define CONFIG_NET_POLL_CONTROLLER 1
 
 void rtnl_lock(void);
 void rtnl_unlock(void);
@@ -845,9 +866,9 @@ static inline void __read_once_size(const volatile void *p, void *res, int size)
 	__u.__val;                                   \
 })
 
-extern unsigned long find_next_bit(const unsigned long *addr, unsigned long
-                                   size, unsigned long offset);
-#define find_first_bit(addr, size) find_next_bit((addr), (size), 0)
+//extern unsigned long find_next_bit(const unsigned long *addr, unsigned long
+//                                   size, unsigned long offset);
+//#define find_first_bit(addr, size) find_next_bit((addr), (size), 0)
 
 #define prefetch(x)  __builtin_prefetch(x)
 #define prefetchw(x) __builtin_prefetch(x,1)
@@ -1089,9 +1110,22 @@ static void __exit __driver##_exit(void) \
 } \
 module_exit(__driver##_exit);
 
+#define builtin_platform_driver(__platform_driver) \
+	builtin_driver(__platform_driver, platform_driver_register)
+
+#define builtin_driver(__driver, __register, ...) \
+int __init __driver##_init(void) \
+{ \
+	return __register(&(__driver) , ##__VA_ARGS__); \
+} \
+device_initcall(__driver##_init);
+
 #define module_platform_driver(__platform_driver) \
 	module_driver(__platform_driver, platform_driver_register, \
 			platform_driver_unregister)
+
+#define device_initcall(__driver) module_init(__driver)
+
 
 struct tasklet_struct
 {
