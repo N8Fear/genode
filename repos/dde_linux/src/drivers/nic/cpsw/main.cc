@@ -95,7 +95,7 @@ static void run_linux(void * m)
 	skb_init();
 	subsys_phy_init();
 	module_davinci_mdio_init();
-	//cpsw_phy_sel_driver_init();
+	cpsw_phy_sel_driver_init();
 	//module_cpsw_driver_init();
 
 	main.announce();
