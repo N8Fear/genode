@@ -96,7 +96,7 @@ static void run_linux(void * m)
 	subsys_phy_init();
 	module_davinci_mdio_init();
 	cpsw_phy_sel_driver_init();
-	//module_cpsw_driver_init();
+	module_cpsw_driver_init();
 
 	main.announce();
 	while (1) Lx::scheduler().current()->block_and_schedule();

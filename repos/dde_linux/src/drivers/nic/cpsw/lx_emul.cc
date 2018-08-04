@@ -407,7 +407,7 @@ int platform_driver_register(struct platform_driver * drv)
 
 	  		Genode::log(__PRETTY_FUNCTION__, " Register card: " );
 
-	  		String name         = node.attribute_value("name", String());
+	  		String name         = "cpsw"; //node.attribute_value("name", String());
 	  		String type         = node.attribute_value("type", String());
 	  		unsigned irq        = node.attribute_value("irq",  0UL);
 	  		Genode::addr_t mmio = node.attribute_value("mmio", 0UL);
@@ -437,7 +437,7 @@ int platform_driver_register(struct platform_driver * drv)
 	  } catch(...) { }
 	}
 
-	Genode::log("Initializing driver for: ",drv->driver.name);
+	Genode::log("Initializing module: ",drv->driver.name);
 
 	if (Genode::strcmp(drv->driver.name, "davinci_mdio") == 0) {
 
@@ -463,6 +463,17 @@ int platform_driver_register(struct platform_driver * drv)
 
 
 		drv->probe(pd);
+	} else if (Genode::strcmp(drv->driver.name, "cpsw") == 0) {
+		platform_device * pd = new (Lx::Malloc::dma()) platform_device();
+
+		pd->name = cpsw_device->name.string();
+		pd->dev.of_node = (device_node *) &cpsw_device;
+		pd->dev.plat_dev = pd;
+		pd->resource = _cpsw_resource;
+		pd->num_resources = 6;
+
+		drv->probe(pd);
+
 	} else Genode::warning("Driver for ", drv->driver.name, " not implemented!");
 	//if (!cpsw_device.constructed()) {
 	//	Genode::warning("No valid configuration provided, use default values");
@@ -483,14 +494,6 @@ int platform_driver_register(struct platform_driver * drv)
 	//	property * prop = new (Lx::Malloc::dma()) property();
 	//	net_device * netdev0 = new (Lx::Malloc::dma()) net_device();
 	//	net_device * netdev1 = new (Lx::Malloc::dma()) net_device();
-
-	//	cpsw_device->mdio->mdio_dn = mdio;
-	//	cpsw_device->net_dev0 = netdev0;
-	//	cpsw_device->net_dev1 = netdev1;
-	//	mdio_pd->name    = cpsw_device->mdio->name.string();
-	//	mdio_pd->dev.of_node = (device_node*) &cpsw_device->mdio;
-	//	mdio_pd->dev.plat_dev = mdio_pd;
-	//	cpsw_device->mdio->pdev = mdio_pd;
 
 	//	phy0->name     = "phy0";
 	//	phy1->name     = "phy1";
@@ -589,6 +592,10 @@ void * devm_ioremap_resource(struct device *dev, struct resource *res)
 		Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for phy_sel...");
 		Cpsw::Mdio::Phy_sel * phy_sel = (Cpsw::Mdio::Phy_sel *) dev->plat_dev->dev.of_node;
 		return phy_sel->io_ds.local_addr<void>();
+	} else if (Genode::strcmp(cpsw->name.string(), "cpsw") == 0) {
+		Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for cpsw...");
+		Cpsw * cpsw = (Cpsw *) dev->plat_dev->dev.of_node;
+		return cpsw->io_ds.local_addr<void>();
 	}
 
 	Genode::warning("devm_ioremap_resource is not implemented for ", cpsw->name);
@@ -845,8 +852,8 @@ int register_netdev(struct net_device * ndev)
 		if (err = ndev ->netdev_ops->ndo_open(ndev))
 			return err;
 
-		//if (ndev ->netdev_ops->ndo_set_rx_mode)
-		//	ndev->netdev_ops->ndo_set_rx_mode(ndev);
+		if (ndev ->netdev_ops->ndo_set_rx_mode)
+			ndev->netdev_ops->ndo_set_rx_mode(ndev);
 
 		//_nic = nic;
 		//_signal->parent().announce(_signal->ep().rpc_ep().manage(&root));
