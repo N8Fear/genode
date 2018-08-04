@@ -53,7 +53,7 @@ proc nic_drv_config { } {
 	if {[have_spec omap4] || [have_spec arndale] || [have_spec rpi]} {
 		return {<config uhci="yes" ohci="yes" ehci="yes"><nic mac="02:00:00:00:01:01"/></config>} }
 	if {[have_spec wega_am335x]} {
-		return "<config><card type=\"cpsw\" mii=\"rmii\" irq=\"41\" mmio=\"0x4a100000\"/></config>" }
+		return "<config><card type=\"ti,cpsw\" mii=\"rmii\" irq=\"41\" mmio=\"0x4a100000\"/></config>" }
 	return ""
 }
 

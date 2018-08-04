@@ -345,11 +345,6 @@ u32 netif_msg_init(int debug_value, int default_msg_enable_bits)
 }
 //Davinci mdio begin
 
-void spin_lock(spinlock_t *lock)
-{
-  TRACE_AND_STOP;
-}
-
 void devres_free(void *res)
 {
   TRACE_AND_STOP;

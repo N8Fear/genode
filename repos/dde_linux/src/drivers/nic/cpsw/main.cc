@@ -31,8 +31,8 @@
 
 /* Linux module functions */
 extern "C" int cpsw_phy_sel_driver_init();
-extern "C" int davinci_mdio_init();
 extern "C" int module_cpsw_driver_init();
+extern "C" int module_davinci_mdio_init();
 extern "C" int subsys_phy_init();
 extern "C" void skb_init();
 
@@ -94,9 +94,9 @@ static void run_linux(void * m)
 
 	skb_init();
 	subsys_phy_init();
-	davinci_mdio_init();
-	cpsw_phy_sel_driver_init();
-	module_cpsw_driver_init();
+	module_davinci_mdio_init();
+	//cpsw_phy_sel_driver_init();
+	//module_cpsw_driver_init();
 
 	main.announce();
 	while (1) Lx::scheduler().current()->block_and_schedule();
