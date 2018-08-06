@@ -1126,7 +1126,6 @@ device_initcall(__driver##_init);
 
 #define device_initcall(__driver) module_init(__driver)
 
-
 struct tasklet_struct
 {
 	void (*func)(unsigned long);
