@@ -499,7 +499,7 @@ int platform_driver_register(struct platform_driver * drv)
 
 
 		cpsw_device->mdio->pdev->dev.of_node->child = pd_phy0->dev.of_node;
-		cpsw_device->mdio->pdev->dev.of_node->sibling = nullptr; // = pd_phy0->dev.of_node;
+		cpsw_device->mdio->pdev->dev.of_node->sibling = pd_phy0->dev.of_node;
 		pd_phy0->dev.of_node->child = nullptr;
 		pd_phy0->dev.of_node->sibling = pd_phy1->dev.of_node;
 		pd_phy1->dev.of_node->child = nullptr;
@@ -1257,6 +1257,7 @@ struct phy_device *of_phy_connect(struct net_device *dev,
 
 	phydev->dev_flags = flags;
 	int ret = phy_connect_direct(dev, phydev, hndlr, (phy_interface_t)iface);
+	Genode::log(__PRETTY_FUNCTION__, "ret value: ", ret);
 	return ret ? nullptr : phydev;
 }
 
@@ -1274,7 +1275,7 @@ struct device_node *of_get_child_by_name(const struct device_node *node,
 static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 {
 	struct phy_device * phy =  (struct phy_device*) get_phy_device(mdio, ph.phy_reg, false);
-	Genode::log(__PRETTY_FUNCTION__, "err status of phy( ph: ", ph.phy_reg, " ):", IS_ERR(phy));
+	Genode::log(__PRETTY_FUNCTION__, "err status of phy( ph: ", ph.phy_reg, "/",phy, " ):", IS_ERR(phy));
 
 	if (!phy || IS_ERR(phy)) return 1;
 
@@ -1286,6 +1287,7 @@ static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 	/* All data is now stored in the phy struct;
 	 * register it */
 	int rc = phy_device_register(phy);
+	Genode::log(__PRETTY_FUNCTION__, " rc value: ", rc);
 	if (rc) {
 		phy_device_free(phy);
 		return 1;
@@ -1322,7 +1324,7 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 	if (rc) return rc;
 
 	cpsw_m->for_each([&] (Cpsw::Mdio::Phy & phy) {
-										 Genode::log("trying to register phy to mdiobus");
+										 Genode::log("trying to register phy to mdiobus for: ", phy.phy_id);
 					of_mdiobus_register_phy(phy, mdio); });
 	Genode::log(__PRETTY_FUNCTION__, "done, exiting...");
 	return 0;
@@ -2090,13 +2092,31 @@ struct property *of_find_property(const struct device_node *np,
 	/* The pointer is not used afterwards and 0xAFFE is easier to grep for than say 1 */
 	if (Genode::strcmp(name, "rmii-clock-ext") == 0)
 		return (struct property *) 0xAFFE;
+	/* not in the device tree of the Phyboard, returning 0 */
+	if (Genode::strcmp(name, "smsc,disable-energy-detect") == 0)
+		return nullptr;
+
+	Genode::log(__PRETTY_FUNCTION__, " searched for: ", name);
+
 	TRACE_AND_STOP;
 }
 
+/* decrement ref counter - not implemented */
+void put_device(struct device *dev)
+{
+	TRACE;
+}
+
+/* decrement ref counter - not implemented */
+void module_put(struct module *mod)
+{
+	TRACE;
 }
 
 
 void spin_lock(spinlock_t *lock)
 {
   TRACE;
+}
+
 }

@@ -258,16 +258,6 @@ void __vlan_hwaccel_put_tag(struct sk_buff *skb, __be16 vlan_proto, u16 vlan_tci
 	TRACE_AND_STOP;
 }
 
-void module_put(struct module *mod)
-{
-	TRACE_AND_STOP;
-}
-
-void put_device(struct device *dev)
-{
-	TRACE_AND_STOP;
-}
-
 void class_unregister(struct class *cls)
 {
 	TRACE_AND_STOP;
