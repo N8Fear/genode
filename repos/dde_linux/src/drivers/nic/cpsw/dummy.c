@@ -146,13 +146,6 @@ ktime_t ns_to_ktime(u64 ns)
 	return ret;
 }
 
-struct timespec64 ns_to_timespec64(const s64 nsec)
-{
-	struct timespec64 ret;
-	TRACE_AND_STOP;
-	return ret;
-}
-
 struct device_node *of_node_get(struct device_node *node)
 {
 	TRACE_AND_STOP;
@@ -168,12 +161,6 @@ int of_phy_register_fixed_link(struct device_node *np)
 void ptp_clock_event(struct ptp_clock *ptp, struct ptp_clock_event *event)
 {
 	TRACE_AND_STOP;
-}
-
-int ptp_clock_index(struct ptp_clock *ptp)
-{
-	TRACE_AND_STOP;
-	return -1;
 }
 
 int ptp_clock_unregister(struct ptp_clock *ptp)

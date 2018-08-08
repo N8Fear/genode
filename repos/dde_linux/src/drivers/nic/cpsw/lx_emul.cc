@@ -862,7 +862,8 @@ int devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler
 struct clk *devm_clk_get(struct device *dev, const char *id)
 {
 	static struct clk clocks[] {
-	  { "fck", 125*1000*1000 }
+		{ "fck", 125*1000*1000 },
+		{ "cpts", 250*1000*1000 },
 	};
 
 	for (unsigned i = 0; i < (sizeof(clocks) / sizeof(struct clk)); i++)
@@ -1556,13 +1557,13 @@ u64 timecounter_read(struct timecounter *tc)
 void clk_disable_unprepare(struct clk * c)
 {
 	Genode::log(__PRETTY_FUNCTION__);
-	TRACE;
+	TRACE_AND_STOP;
 }
 
 int clk_prepare_enable(struct clk * c)
 {
 	Genode::log(__PRETTY_FUNCTION__);
-	TRACE;
+	//	TRACE_AND_STOP;
 	return 0;
 }
 
@@ -1672,7 +1673,9 @@ void pm_runtime_use_autosuspend(struct device *dev)
 struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info, struct device *parent)
 {
 	TRACE;
-	return (ptp_clock*)0xdeadbeef;
+	struct ptp_clock * cpts = new (Lx::Malloc::dma()) ptp_clock();
+	cpts->index = 0;
+	return cpts;
 }
 
 int regulator_enable(struct regulator * d)
@@ -2271,6 +2274,56 @@ void module_put(struct module *mod)
 void spin_lock(spinlock_t *lock)
 {
   TRACE;
+}
+// For CPTS
+unsigned int ptp_classify_raw(const struct sk_buff *skb)
+{
+	return BPF_PROG_RUN(ptp_insns, skb);
+}
+
+void clk_disable(struct clk *clk)
+{
+	//unsigned long flags;
+
+	//if (clk == NULL || IS_ERR(clk))
+	//	return;
+
+	//spin_lock_irqsave(&clockfw_lock, flags);
+	//__clk_disable(clk);
+	//spin_unlock_irqrestore(&clockfw_lock, flags);
+
+	TRACE_AND_STOP;
+}
+
+int ptp_clock_index(struct ptp_clock *ptp)
+{
+	return ptp->index;
+}
+/**
+ * div_s64_rem - signed 64bit divide with 32bit divisor with remainder
+ */
+static inline s64 div_s64_rem(s64 dividend, s32 divisor, s32 *remainder)
+{
+	*remainder = dividend % divisor;
+	return dividend / divisor;
+}
+
+struct timespec64 ns_to_timespec64(const s64 nsec)
+{
+	struct timespec64 ts;
+	s32 rem;
+
+	if (!nsec)
+		return (struct timespec64) {0, 0};
+
+	ts.tv_sec = div_s64_rem(nsec, NSEC_PER_SEC, &rem);
+	if (unlikely(rem < 0)) {
+		ts.tv_sec--;
+		rem += NSEC_PER_SEC;
+	}
+	ts.tv_nsec = rem;
+
+	return ts;
 }
 
 }

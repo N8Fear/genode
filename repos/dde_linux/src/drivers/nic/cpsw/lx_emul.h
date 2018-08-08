@@ -829,6 +829,7 @@ bool netif_queue_stopped(const struct net_device *dev);
 #define CONFIG_ARCH_MXC 1
 #define CONFIG_OF_MDIO  1
 #define CONFIG_PTP_1588_CLOCK 1
+#define CONFIG_TI_CPTS 1
 // Check if needed
 //#define CONFIG_PM_SLEEP 1
 //#define CONFIG_NET_POLL_CONTROLLER 1
@@ -1747,6 +1748,73 @@ static inline void napi_schedule(struct napi_struct *n)
 		__napi_schedule(n);
 }
 
+// For CPTS
+struct bpf_insn {
+	__u8	code;		/* opcode */
+	__u8	dst_reg:4;	/* dest register */
+	__u8	src_reg:4;	/* source register */
+	__s16	off;		/* signed offset */
+	__s32	imm;		/* signed immediate constant */
+};
+
+enum bpf_prog_type {
+	BPF_PROG_TYPE_UNSPEC,
+	BPF_PROG_TYPE_SOCKET_FILTER,
+	BPF_PROG_TYPE_KPROBE,
+	BPF_PROG_TYPE_SCHED_CLS,
+	BPF_PROG_TYPE_SCHED_ACT,
+};
+
+struct sock_filter {	/* Filter block */
+	__u16	code;   /* Actual filter code */
+	__u8	jt;	/* Jump true */
+	__u8	jf;	/* Jump false */
+	__u32	k;      /* Generic multiuse field */
+};
+
+struct bpf_prog {
+	u16			pages;		/* Number of allocated pages */
+	kmemcheck_bitfield_begin(meta);
+	u16			jited:1,	/* Is our filter JIT'ed? */
+				gpl_compatible:1, /* Is filter GPL compatible? */
+				cb_access:1,	/* Is control block accessed? */
+				dst_needed:1;	/* Do we need dst entry? */
+	kmemcheck_bitfield_end(meta);
+	u32			len;		/* Number of filter blocks */
+	enum bpf_prog_type	type;		/* Type of BPF program */
+	struct bpf_prog_aux	*aux;		/* Auxiliary fields */
+	struct sock_fprog_kern	*orig_prog;	/* Original BPF program */
+	unsigned int		(*bpf_func)(const struct sk_buff *skb,
+					    const struct bpf_insn *filter);
+	/* Instructions for interpreter */
+	union {
+		struct sock_filter	insns[0];
+		struct bpf_insn		insnsi[0];
+	};
+};
+
+static struct bpf_prog *ptp_insns __read_mostly;
+
+#define BPF_PROG_RUN(filter, ctx)  (*filter->bpf_func)(ctx, filter->insnsi)
+
+
+struct ptp_clock {
+	//	struct posix_clock clock;
+	//	struct device *dev;
+	//	struct ptp_clock_info *info;
+	//	dev_t devid;
+	int index; /* index into clocks.map */
+	//	struct pps_device *pps_source;
+	//	long dialed_frequency; /* remembers the frequency adjustment */
+	//	struct timestamp_event_queue tsevq; /* simple fifo for time stamps */
+	//	struct mutex tsevq_mux; /* one process at a time reading the fifo */
+	//	struct mutex pincfg_mux; /* protect concurrent info->pin_config access */
+	//	wait_queue_head_t tsev_wq;
+	//	int defunct; /* tells readers to go away when clock is being removed */
+	//	struct device_attribute *pin_dev_attr;
+	//	struct attribute **pin_attr;
+	//	struct attribute_group pin_attr_group;
+};
 
 
 #include <lx_emul/extern_c_end.h>
