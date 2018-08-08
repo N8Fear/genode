@@ -311,13 +311,6 @@ int device_for_each_child(struct device *parent, void *data,
 	TRACE_AND_STOP;
 }
 
-struct device *bus_find_device(struct bus_type *bus,
-			       struct device *start, void *data,
-			       int (*match)(struct device *dev, void *data))
-{
-	TRACE_AND_STOP;
-}
-
 bool is_broadcast_ether_addr(const u8 *addr)
 {
 	TRACE_AND_STOP;

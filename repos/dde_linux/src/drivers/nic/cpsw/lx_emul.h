@@ -288,10 +288,10 @@ void devres_free(void *res);
 #define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
 #define __ALIGN_MASK(x, mask)	__ALIGN_KERNEL_MASK((x), (mask))
 
-#define find_first_zero_bit(p,sz)	_find_first_zero_bit_le(p,sz)
-#define find_next_zero_bit(p,sz,off)	find_next_zero_bit_le(p,sz,off)
-#define find_first_bit(p,sz)		_find_first_bit_le(p,sz)
-#define find_next_bit(p,sz,off)		find_next_bit_le(p,sz,off)
+//#define find_first_zero_bit(p,sz)	_find_first_zero_bit_le(p,sz)
+//#define find_next_zero_bit(p,sz,off)	find_next_zero_bit_le(p,sz,off)
+//#define find_first_bit(p,sz)		_find_first_bit_le(p,sz)
+//#define find_next_bit(p,sz,off)		find_next_bit_le(p,sz,off)
 
 #define BITMAP_FIRST_WORD_MASK(start) (~0UL << ((start) & (BITS_PER_LONG - 1)))
 #define BITMAP_LAST_WORD_MASK(nbits) (~0UL >> (-(nbits) & (BITS_PER_LONG - 1)))
@@ -1747,17 +1747,6 @@ static inline void napi_schedule(struct napi_struct *n)
 		__napi_schedule(n);
 }
 
-/**
- *	netif_stop_queue - stop transmitted packets
- *	@dev: network device
- *
- *	Stop upper layers calling the device hard_start_xmit routine.
- *	Used for flow control when transmit resources are unavailable.
- */
-static inline void netif_stop_queue(struct net_device *dev)
-{
-	netif_tx_stop_queue(netdev_get_tx_queue(dev, 0));
-}
 
 
 #include <lx_emul/extern_c_end.h>

@@ -99,6 +99,7 @@ static void run_linux(void * m)
 	cpsw_phy_sel_driver_init();
 	module_cpsw_driver_init();
 
+	Genode::log(__PRETTY_FUNCTION__, " Announce in run_linux...");
 	main.announce();
 	while (1) Lx::scheduler().current()->block_and_schedule();
 }
