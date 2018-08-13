@@ -1,0 +1,25 @@
+From 63e27216c049c111c0297a15d042b2b0189c9747 Mon Sep 17 00:00:00 2001
+From: Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
+Date: Thu, 9 Aug 2018 21:23:17 +0200
+Subject: [PATCH] add GFP_LX_DMA to allocation
+
+---
+ drivers/net/ethernet/ti/cpsw.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ti/cpsw.c b/drivers/net/ethernet/ti/cpsw.c
+index fc95806..a918c27 100644
+--- a/drivers/net/ethernet/ti/cpsw.c
++++ b/drivers/net/ethernet/ti/cpsw.c
+@@ -1313,7 +1313,7 @@ static int cpsw_ndo_open(struct net_device *ndev)
+ 
+ 			ret = -ENOMEM;
+ 			skb = __netdev_alloc_skb_ip_align(priv->ndev,
+-					priv->rx_packet_max, GFP_KERNEL);
++					priv->rx_packet_max, GFP_KERNEL | GFP_LX_DMA);
+ 			if (!skb)
+ 				goto err_cleanup;
+ 			ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
+-- 
+2.18.0
+
