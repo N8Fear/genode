@@ -15,6 +15,7 @@ linux-x.x.x/drivers/net/phy/phy_device.c
 linux-x.x.x/drivers/net/phy/smsc.c
 linux-x.x.x/include/linux/smscphy.h
 linux-x.x.x/include/linux/davinci_emac.h
+linux-x.x.x/include/linux/ptp_classify.h
 linux-x.x.x/net/core/skbuff.c
 linux-x.x.x/net/ethernet/eth.c
 linux-x.x.x/include/asm-generic/atomic64.h

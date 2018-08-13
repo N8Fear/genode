@@ -93,7 +93,6 @@ static resource _cpsw_resource[] =
 {
  { 0x4a100000, 0x800, "cpsw-regs", IORESOURCE_MEM },
  { 0x4a101200, 0x100, "cpsw-regs", IORESOURCE_MEM },
- { 0x44e10650, 0x04,  "gmii-sel",  IORESOURCE_MEM },
  { 0x28, 0x28, "3pgswrxthr0-irq" /* name unused */, IORESOURCE_IRQ },
  { 0x29, 0x29, "3pgwsrxint0-irq" /* name unused */, IORESOURCE_IRQ },
  { 0x2a, 0x2a, "3pgwstxint0-irq" /* name unused */, IORESOURCE_IRQ },
@@ -439,8 +438,8 @@ int platform_driver_register(struct platform_driver * drv)
 	  		cpsw_device.construct(name, type, irq, mmio);
 
 	  		cpsw_device->mdio.construct("mdio", "ti,davinci_mdio");
-	  		cpsw_device->mdio->phys[0].construct("slave", "rmii", 0, 0, 41); // TODO/Cleanup: 0x4a100100); // the register is the P0 control register
-	  		cpsw_device->mdio->phys[1].construct("slave", "mii", 1, 1, 42); //0 TODO/Cleanup: x4a100200); // the register is the P1 control register
+	  		cpsw_device->mdio->phys[0].construct("slave", "rmii", 0, 0, 40); // TODO/Cleanup: 0x4a100100); // the register is the P0 control register
+	  		cpsw_device->mdio->phys[1].construct("slave", "mii", 1, 1, 43); //0 TODO/Cleanup: x4a100200); // the register is the P1 control register
 	  		cpsw_device->mdio->phy_sel.construct("cpsw-phy-sel", "ti,am3352-cpsw-phy-sel", 0x4a100300); //the register is the P3 control register
 
 	  		Genode::log("phy0: ", cpsw_device->mdio->phys[0]->phy_mode);
@@ -806,28 +805,40 @@ void *dev_get_platdata(const struct device *dev)
 int netif_running(const struct net_device *dev)
 {
 	Genode::log(__PRETTY_FUNCTION__, "dev: ", dev);
-	//TODO: Vielleicht fheler, evtl null ptr deref
 	return dev->state & (1 << __LINK_STATE_START);
 }
 
 
 void netif_carrier_on(struct net_device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
 	dev->state &= ~(1UL << __LINK_STATE_NOCARRIER);
 
-	if (cpsw_device->session0) cpsw_device->session0->link_state(true);
-	//HVB Todo: need logic for session 1
+	if (Genode::strcmp(dev->name, "netd0") == 0) {
+	  Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
+	  if (cpsw_device->session0) cpsw_device->session0->link_state(true);
+	} else if (Genode::strcmp(dev->name, "netd1") == 0) {
+	  Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
+	  if (cpsw_device->session1) cpsw_device->session1->link_state(true);
+	} else {
+		Genode::error("unkown device!");
+	}
 }
 
 
 void netif_carrier_off(struct net_device *dev)
 {
 	dev->state |= 1UL << __LINK_STATE_NOCARRIER;
+	Genode::log(__PRETTY_FUNCTION__, "device: ", dev->name);
 
-	//Cpsw * cpsw = (Cpsw*) dev->dev.of_node;
-	if (cpsw_device->session0) cpsw_device->session0->link_state(false);
-	//HVB Todo: need logic for session 1
+	if (Genode::strcmp(dev->name, "netd0") == 0) {
+	  Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
+	  if (cpsw_device->session0) cpsw_device->session0->link_state(false);
+	} else if (Genode::strcmp(dev->name, "netd1") == 0) {
+	  Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
+	  if (cpsw_device->session1) cpsw_device->session1->link_state(false);
+	} else {
+		Genode::error("unkown device!");
+	}
 }
 
 
@@ -845,7 +856,6 @@ int platform_get_irq(struct platform_device * d, unsigned int i)
 	Genode::log(__PRETTY_FUNCTION__, " Asking for: ", i , " - getting: ", cpsw_device->irq +i -1 );
 	if (i > 4) return -1;
 
-	//Cpsw * cpsw = (Cpsw*) d->dev.of_node;
 
 	return cpsw_device->irq + i -1;
 }
@@ -861,9 +871,11 @@ int devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler
 
 struct clk *devm_clk_get(struct device *dev, const char *id)
 {
+	Genode::log("devm_clk_get ", dev, " id: ", id);
 	static struct clk clocks[] {
-		{ "fck", 125*1000*1000 },
-		{ "cpts", 250*1000*1000 },
+		{ "fck-mdio", 22*1000*1000 },
+		{ "fck", 256*1000*1000 },
+		{ "cpts", 125*1000*1000 },
 	};
 
 	for (unsigned i = 0; i < (sizeof(clocks) / sizeof(struct clk)); i++)
@@ -894,7 +906,6 @@ int register_netdev(struct net_device * ndev)
 {
 	// BROKEN:
 	//Genode::log(__PRETTY_FUNCTION__, " Try to register netdev...", d->dev.of_node);
-	//d->state |= (1 << __LINK_STATE_START) | (1UL << __LINK_STATE_NOCARRIER);
 
 	//Genode::log(__PRETTY_FUNCTION__, " Succeeded to set state");
 	//Cpsw * cpsw = (Cpsw*) d->dev.of_node;
@@ -931,7 +942,7 @@ int register_netdev(struct net_device * ndev)
 	} else if (!cpsw_device->net_dev1) {
 	  cpsw_device->net_dev1 = ndev;
 	  cpsw_device->net_dev1->name = "netd1";
-		marker = true;
+		//	marker = true;
 		Genode::log("devname after: ", ndev->name, cpsw_device->net_dev1->name);
 	}
 	//cpsw->net_dev0 = ndev;
@@ -1067,9 +1078,9 @@ void reinit_completion(struct completion *work)
 }
 
 
-static void _completion_timeout(unsigned long t)
+static void _completion_timeout(struct timer_list *t)
 {
-	Lx::Task *task = (Lx::Task *)t;
+	Lx::Task *task = (Lx::Task *)t->data;
 	task->unblock();
 }
 
@@ -1081,7 +1092,8 @@ long __wait_completion(struct completion *work, unsigned long timeout)
 	unsigned long j = timeout ? jiffies + timeout : 0;
 
 	if (timeout) {
-		setup_timer(&t, _completion_timeout, (unsigned long)Lx::scheduler().current());
+		timer_setup(&t, _completion_timeout, 0u);
+		t.data = (unsigned long) Lx::scheduler().current();
 		mod_timer(&t, j);
 	}
 
@@ -1418,25 +1430,20 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 
 	mdio->phy_mask = ~0;
 
-	Genode::log(__PRETTY_FUNCTION__, "searching breakage");
 	/* Clear all the IRQ properties */
 	if (mdio->irq)
 		for (unsigned i = 0; i<PHY_MAX_ADDR; i++)
 			mdio->irq[i] = PHY_POLL;
-	Genode::log(__PRETTY_FUNCTION__, "searching breakage");
 
 	mdio->dev.of_node = np;
 
-	Genode::log(__PRETTY_FUNCTION__, "searching breakage");
 	/* Register the MDIO bus */
 	int rc = mdiobus_register(mdio);
-	Genode::log(__PRETTY_FUNCTION__, "searching breakage");
 	if (rc) return rc;
 
 	cpsw_m->for_each([&] (Cpsw::Mdio::Phy & phy) {
 										 Genode::log("trying to register phy to mdiobus for: ", phy.phy_id);
 					of_mdiobus_register_phy(phy, mdio); });
-	Genode::log(__PRETTY_FUNCTION__, "done, exiting...");
 	return 0;
 }
 
@@ -1906,16 +1913,14 @@ int of_property_read_u32(const struct device_node *np, const char *propname, u32
 	}
 
  	else if (Genode::strcmp("reg", propname) == 0) {
-		Cpsw * cpsw = (Cpsw *) np;
 		Genode::log("of_property_read_u32: reg for node " , cpsw->name);
-	  if (Genode::strcmp(cpsw->name.string(), "mdio") == 0) {
-		  Genode::log("of_property_read_u32: in reg mdio branch ");
-		  *out_value = 0x4a101000; // Adress of MDIO, in dt there is <0x4a101000 0x100> is the 0x100 the size?
-		} else {
-		  Genode::log("of_property_read_u32: in reg else branch - which reg is asked for here?" , cpsw->name);
-		  //*out_value = 0x4a101000; // Adress of MDIO, in dt there is <0x4a101000 0x100> is the 0x100 the size?
-			TRACE_AND_STOP;
-		}
+		// if (Genode::strcmp(cpsw->name.string(), "mdio") == 0) {
+		//	  Genode::log("of_property_read_u32: in reg mdio branch ");
+		//	  *out_value = 0x4a101000; // Adress of MDIO, in dt there is <0x4a101000 0x100> is the 0x100 the size?
+		//	} else {
+		Genode::log("of_property_read_u32: in reg else branch - which reg is asked for here?" , cpsw->name);
+		TRACE_AND_STOP;
+		//}
 
 	}
 
@@ -2237,12 +2242,12 @@ struct property *of_find_property(const struct device_node *np,
 					 const char *name,
 					 int *lenp)
 {
-	/* The pointer is not used afterwards and 0xAFFE is easier to grep for than say 1 */
+	/* The pointer is not used afterwards */
 	if (Genode::strcmp(name, "rmii-clock-ext") == 0)
-		return (struct property *) 0xAFFE;
-	/* not in the device tree of the Phyboard, returning 0 */
+		return (struct property *) 0x1;
+	/* not in the device tree of the Phyboard, returning not null to disable it */
 	if (Genode::strcmp(name, "smsc,disable-energy-detect") == 0)
-	  return nullptr;
+		return (struct property *) 0x1;
 
 	Genode::log(__PRETTY_FUNCTION__, " searched for: ", name);
 
@@ -2325,5 +2330,8 @@ struct timespec64 ns_to_timespec64(const s64 nsec)
 
 	return ts;
 }
+
+// ALE
+void init_timer(struct timer_list *timer) { }
 
 }
