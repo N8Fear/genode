@@ -1,0 +1,25 @@
+From 5d35139012a7c4a916abb6059fdc1ea59954add3 Mon Sep 17 00:00:00 2001
+From: Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
+Date: Tue, 14 Aug 2018 18:06:02 +0200
+Subject: [PATCH] cpsw_physid  exchange be32_to_cpup logic
+
+---
+ drivers/net/ethernet/ti/cpsw.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/ti/cpsw.c b/drivers/net/ethernet/ti/cpsw.c
+index a918c27..363663b 100644
+--- a/drivers/net/ethernet/ti/cpsw.c
++++ b/drivers/net/ethernet/ti/cpsw.c
+@@ -2061,7 +2061,7 @@ static int cpsw_probe_dt(struct cpsw_priv *priv,
+ 				goto no_phy_slave;
+ 			}
+ 			mdio_node = of_find_node_by_phandle(be32_to_cpup(parp));
+-			phyid = be32_to_cpup(parp+1);
++			phyid = get_phy_id(slave_node);
+ 			mdio = of_find_device_by_node(mdio_node);
+ 			of_node_put(mdio_node);
+ 			if (!mdio) {
+-- 
+2.18.0
+
