@@ -1356,8 +1356,8 @@ struct device_node *of_parse_phandle(const struct device_node *np, const char *p
 {
 	Genode::log(__PRETTY_FUNCTION__, "If it is successful, it returns just the node - doing the same for node:", np->name, " ", np->id, " ", np);
 	// TODO: this seems to be wrong, because the second phy cannot be loaded this way...
-	//return nullptr; // there is no phy-handle property in the device tree, therrefore we return 0
-	return (device_node*) np;
+	return nullptr; // there is no phy-handle property in the device tree, therrefore we return 0
+	//return (device_node*) np;
 }
 
 
@@ -1376,6 +1376,7 @@ struct phy_device *of_phy_connect(struct net_device *dev,
 
 	phydev->dev_flags = flags;
 	int ret = phy_connect_direct(dev, phydev, hndlr, (phy_interface_t)iface);
+
 	Genode::log(__PRETTY_FUNCTION__, "ret value: ", ret);
 	return ret ? nullptr : phydev;
 }
@@ -1396,29 +1397,29 @@ struct device_node *of_get_child_by_name(const struct device_node *node,
 
 static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 {
-	struct phy_device * phy =  (struct phy_device*) get_phy_device(mdio, ph.phy_reg, false);
-	Genode::log(__PRETTY_FUNCTION__, "err status of phy( ph: ", ph.phy_reg, "/",phy, " ):", IS_ERR(phy));
+		struct phy_device * phy =  (struct phy_device*) get_phy_device(mdio, ph.phy_reg, false);
+		Genode::log(__PRETTY_FUNCTION__, "err status of phy( ph: ", ph.phy_reg, "/",phy, " ):", IS_ERR(phy));
 
-	if (!phy || IS_ERR(phy)) return 1;
+		if (!phy || IS_ERR(phy)) return 1;
 
-	Genode::log(__PRETTY_FUNCTION__, " We are registering interrupt ", ph.gpio_irq, " for ", phy);
+		Genode::log(__PRETTY_FUNCTION__, " We are registering interrupt ", ph.gpio_irq, " for ", phy);
 
-	phy->irq         = ph.gpio_irq;
-	phy->dev.of_node = (device_node*) &ph;
+		phy->irq         = ph.gpio_irq;
+		phy->dev.of_node = (device_node*) &ph;
 
-	/* All data is now stored in the phy struct;
-	 * register it */
-	int rc = phy_device_register(phy);
-	Genode::log(__PRETTY_FUNCTION__, " rc value: ", rc);
-	if (rc) {
-		phy_device_free(phy);
-		return 1;
-	}
+		/* All data is now stored in the phy struct;
+		 * register it */
+		int rc = phy_device_register(phy);
+		Genode::log(__PRETTY_FUNCTION__, " rc value: ", rc);
+		if (rc) {
+			phy_device_free(phy);
+			return 1;
+		}
 
-	ph.phy_dev = phy;
+		ph.phy_dev = phy;
 
-	dev_dbg(&mdio->dev, "registered phy at address %i\n", ph.phy_reg);
-	dev_info(&mdio->dev, "registered phy at address %i\n", ph.phy_reg);
+		dev_dbg(&mdio->dev, "registered phy at address %i\n", ph.phy_reg);
+		dev_info(&mdio->dev, "registered phy at address %i\n", ph.phy_reg);
 
 	return 0;
 }
@@ -1426,24 +1427,27 @@ static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 {
 	Genode::log(__PRETTY_FUNCTION__, "searching breakage");
-	Cpsw::Mdio * cpsw_m = (Cpsw::Mdio*) np;
 
 	mdio->phy_mask = ~0;
 
 	/* Clear all the IRQ properties */
-	if (mdio->irq)
+	if (mdio->irq) {
+		Genode::log("DEBUG: interrupt in mdio bus");
 		for (unsigned i = 0; i<PHY_MAX_ADDR; i++)
 			mdio->irq[i] = PHY_POLL;
+	}
 
-	mdio->dev.of_node = np;
+	mdio->dev.of_node = (struct device_node *) &cpsw_device->mdio;
 
 	/* Register the MDIO bus */
 	int rc = mdiobus_register(mdio);
 	if (rc) return rc;
 
-	cpsw_m->for_each([&] (Cpsw::Mdio::Phy & phy) {
+	cpsw_device->mdio->for_each([&] (Cpsw::Mdio::Phy & phy) {
 										 Genode::log("trying to register phy to mdiobus for: ", phy.phy_id);
-					of_mdiobus_register_phy(phy, mdio); });
+										 of_mdiobus_register_phy(phy, mdio);
+										 ;
+	});
 	return 0;
 }
 
@@ -2167,7 +2171,8 @@ struct device_node *of_find_node_by_phandle(phandle handle)
 {
 	//Genode::log(__PRETTY_FUNCTION__, " phandle:", handle);
 	/* Returning pointer to mdio's device node */
-	return (device_node*) cpsw_device->mdio->mdio_dn;
+	return (device_node*) &cpsw_device->mdio;
+	//return (device_node*) cpsw_device->mdio->mdio_dn;
 }
 
 struct platform_device *of_find_device_by_node(struct device_node *np)
