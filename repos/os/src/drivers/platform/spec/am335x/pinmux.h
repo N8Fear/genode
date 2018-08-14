@@ -14,16 +14,14 @@
 #ifndef _DRIVERS__PLATFORM__SPEC__AM335X__PINMUX_H_
 #define _DRIVERS__PLATFORM__SPEC__AM335X__PINMUX_H_
 
-#include <regulator/consts.h>
-#include <regulator/driver.h>
+#include <util/mmio.h>
+#include <base/attached_io_mem_dataspace.h>
 #include <drivers/defs/am335x.h>
-#include <os/attached_mmio.h>
 #include <base/log.h>
 
-using namespace Regulator;
 
-class Pinmux : public Regulator::Driver,
-              private Genode::Attached_mmio
+class Pinmux : public Genode::Attached_io_mem_dataspace,
+              Genode::Mmio
 {
 	private:
 
@@ -91,20 +89,63 @@ class Pinmux : public Regulator::Driver,
 	struct conf_mdio          : Register<0x148, 32> { };
 	struct conf_mdc           : Register<0x14c, 32> { };
 
+	struct conf_spi0_cs1      : Register<0x160, 32> { };
 
-	void _cpsw_pinmux_setup()
+	struct conf_uart0_ctsn    : Register<0x168, 32> { };
+	struct conf_uart0_rtsn    : Register<0x16c, 32> { };
+	struct conf_uart0_rxd     : Register<0x170, 32> { };
+	struct conf_uart0_txd     : Register<0x174, 32> { };
+	struct conf_uart1_ctsn    : Register<0x178, 32> { };
+	struct conf_uart1_rtsn    : Register<0x17c, 32> { };
+	struct conf_uart1_rxd     : Register<0x180, 32> { };
+	struct conf_uart1_txd     : Register<0x184, 32> { };
+	/* mmc0 would be more sensible because of the register names, but it is mmc 1 in the device tree */
+public:
+	void uart0_pinmux_setup()
+	{
+		Genode::log("Setting up pinmuxing for UART0");
+		write<conf_uart0_rxd>(0x30);
+		write<conf_uart0_txd>(0x00);
+	}
+
+	void uart1_pinmux_setup()
+	{
+		Genode::log("Setting up pinmuxing for UART1");
+		write<conf_uart1_rxd>(0x30);
+		write<conf_uart1_txd>(0x00);
+		write<conf_uart1_ctsn>(0x28);
+		write<conf_uart1_rtsn>(0x00);
+	}
+
+	void mmc1_pinmux_setup()
+	{
+		Genode::log("Setting up pinmuxing for SD/MMC 1");
+		write<conf_mmc0_dat3>(0x30);
+		write<conf_mmc0_dat2>(0x30);
+		write<conf_mmc0_dat1>(0x30);
+		write<conf_mmc0_dat0>(0x30);
+		write<conf_mmc0_clk>(0x30);
+		write<conf_mmc0_cmd>(0x30);
+		write<conf_spi0_cs1>(0x37);
+
+	}
+
+	void cpsw_pinmux_setup()
 	{
 		/* Ethernet 0 from device tree */
 		Genode::log("Setting up pinmuxing for CPSW ethernet");
-		write<conf_mii1_crs>(0x21u);
-		write<conf_mii1_rx_er>(0x21u);
-		write<conf_mii1_tx_en>(0x9u);
-		write<conf_mii1_txd1>(0x9u);
-		write<conf_mii1_txd0>(0x9u);
-		write<conf_mii1_rxd1>(0x21u);
-		write<conf_mii1_rxd0>(0x21u);
-		write<conf_rmii1_ref_clk>(0x20u);
-		write<conf_mdio>(0x70u);
+		write<conf_mii1_crs>(0x21);
+		write<conf_mii1_rx_er>(0x21);
+		write<conf_mii1_tx_en>(0x9);
+		write<conf_mii1_txd1>(0x9);
+		write<conf_mii1_txd0>(0x9);
+		write<conf_mii1_rxd1>(0x21);
+		write<conf_mii1_rxd0>(0x21);
+		write<conf_rmii1_ref_clk>(0x20);
+
+		/* mdio */
+		write<conf_mdio>(0x70);
+		write<conf_mdc>(0x10);
 
 		/* Ethernet 1 from device tree */
 		write<conf_gpmc_a0>(0x09u);
@@ -141,92 +182,24 @@ class Pinmux : public Regulator::Driver,
 		//write<conf_mdc>(0x0 | 0x10u);
     }
 
-		void _enable(Regulator_id id)
-		{
-			switch (id) {
-				//case CPSW_PINMUX:
-				//	_cpsw_pinmux_setup();
-				//	break;
-			default:
-				Genode::warning("enabling regulator unsupported for ", names[id].name);
-			}
-		}
-
-		void _disable(Regulator_id id)
-		{
-			switch (id) {
-			default:
-				Genode::warning("disabling regulator unsupported for ", names[id].name);
-			}
-		}
-public:
-	//	  	void _enable_uart_clock()
-	//	  	{
-	//	  		Genode::log("Enable UART clock...");
-	//	  		write<cm_per_uart1_clkctrl::modulemode>(2);
-	//	  		while (read<cm_per_uart1_clkctrl::modulemode>() != 2);
-	//	  		while (!(read<cm_per_l4ls_clkstctrl::clkactivity_l4ls_gclk>() == 1
-	//	  		      && read<cm_per_l4ls_clkstctrl::clkactivity_uart_gfclk>() == 1));
-	//	  		Genode::log("UART clocks in CM_PER enabled.");
-	//	  	}
-	//
-	//	  	void enable_cpsw_clock()
-	//	  	{
-	//	  		Genode::log("Enable CPSW clock...");
-	//	  		Genode::log("Current state: ", read<cm_per_cpsw_clkstctrl::clkactivity_cpsw_125mhz_gclk>());
-	//	  		write<cm_per_cpsw_clkstctrl::clktrctrl>(2);
-	//	  		Genode::log("Current state: ", read<cm_per_cpsw_clkstctrl::clkactivity_cpsw_125mhz_gclk>());
-	//	  	}
 
 	/**
 	 * Constructor
 	 */
 	Pinmux(Genode::Env &env)
-		: Genode::Attached_mmio(env, (Am335x::CTR_MOD_BASE + 0x800),
-	                        0x234)
+		: Genode::Attached_io_mem_dataspace(env, (Am335x::CTR_MOD_BASE + 0x800),
+																				0x234),
+																				Genode::Mmio((Genode::addr_t)local_addr<void>())
 	{
 		Genode::log("Setting up pinmuxing");
-		_cpsw_pinmux_setup();
+		cpsw_pinmux_setup();
+		mmc1_pinmux_setup();
+		uart0_pinmux_setup();
+		uart1_pinmux_setup();
 	}
 
 	virtual ~Pinmux() { }
 
-	/********************************
-	 ** Regulator driver interface **
-	 ********************************/
-
-	void level(Regulator_id id, unsigned long level)
-	{
-		switch (id) {
-		default:
-			Genode::warning("disabling regulator unsupported for ", names[id].name);
-		}
-	}
-
-	unsigned long level(Regulator_id id)
-	{
-		switch (id) {
-		default:
-			Genode::warning("disabling regulator unsupported for ", names[id].name);
-		}
-		return 0;
-	}
-
-	void state(Regulator_id id, bool enable)
-	{
-		if (enable)
-			_enable(id);
-		else
-			_disable(id);
-	}
-
-	bool state(Regulator_id id)
-	{
-		switch (id) {
-		default:
-			Genode::warning("state request unsupported for ", names[id].name);
-		}
-	}
 };
 
 
