@@ -221,6 +221,7 @@ struct device_node
 	struct device_node *parent;
 	struct device_node *child;
 	struct device_node *sibling;
+	int id;
 };
 
 struct device;
@@ -835,7 +836,6 @@ void netif_tx_wake_queue(struct netdev_queue *dev_queue);
 bool netif_queue_stopped(const struct net_device *dev);
 
 #define CONFIG_ARM      1
-#define CONFIG_ARCH_MXC 1
 #define CONFIG_OF_MDIO  1
 #define CONFIG_PTP_1588_CLOCK 1
 #define CONFIG_TI_CPTS 1
