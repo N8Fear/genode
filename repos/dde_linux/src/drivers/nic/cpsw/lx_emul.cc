@@ -101,7 +101,7 @@ static resource _cpsw_resource[] =
 
 static resource _mdio_resource[] =
 {
- { 0x4a101000, 0x00, "mdio-regs", IORESOURCE_MEM },
+ { 0x4a101000, 0x100, "mdio-regs", IORESOURCE_MEM },
 };
 
 static resource _cpsw_phy_sel_resource[] = {
@@ -288,7 +288,7 @@ struct Gpio_irq : public Genode::List<Gpio_irq>::Element
 	  ihandler(handler),
 	  dev_id(dev_id)
 	{
-		Genode::log(__PRETTY_FUNCTION__, " registering irq nr: ", nr);
+		//Genode::log(__PRETTY_FUNCTION__, " registering irq nr: ", nr);
 		list()->insert(this);
 
 		irq.sigh(sigh);
@@ -308,7 +308,7 @@ struct Cpsw
 		struct device_node *  mdio_dn { nullptr };
 		struct platform_device * pdev { nullptr };
 		struct mii_bus *       mii_bus  { nullptr };
-		Genode::Attached_io_mem_dataspace io_ds {Lx_kit::env().env(), 0x4a101000, 0x100 };
+		//Genode::Attached_io_mem_dataspace io_ds {Lx_kit::env().env(), 0x4a101000, 0x100 };
 
 		struct Phy
 		{
@@ -361,7 +361,7 @@ struct Cpsw
 	struct platform_device *          pdev     { nullptr };
 	Session_component *               session0  { nullptr };
 	Session_component *               session1  { nullptr };
-	Genode::Attached_io_mem_dataspace io_ds    { Lx_kit::env().env(), mmio, 0x1000 }; // Size is 0x1000 becausea mdio and  cpdma want their mmio
+	Genode::Attached_io_mem_dataspace io_ds    { Lx_kit::env().env(), mmio, 0x7FFF }; // 0x800 };
 	Genode::Constructible<Mdio>       mdio;
 	Mdio::Phy *                       phy0 { nullptr };
 	Mdio::Phy *                       phy1 { nullptr };
@@ -385,7 +385,6 @@ net_device * Session_component::_register_session_component(Session_component & 
 	if (!cpsw_device.constructed()) return nullptr;
 
 	/* Session does not match cards policy */
-	Genode::log(cpsw_device->name.length(), " ", cpsw_device->name, " ", name);
 	//if (cpsw_device->name.length() > 1 &&
 	//    cpsw_device->name != name) return nullptr;
 
@@ -434,8 +433,8 @@ int platform_driver_register(struct platform_driver * drv)
 	  		cpsw_device.construct(name, type, irq, mmio);
 
 	  		cpsw_device->mdio.construct("mdio", "ti,davinci_mdio");
-	  		cpsw_device->mdio->phys[0].construct("slave", "rmii", 0x20000000, 0, 40); // TODO/Cleanup: 0x4a100100);
-	  		cpsw_device->mdio->phys[1].construct("slave", "mii" , 0x200100, 1, 43); //0 TODO/Cleanup: x4a100200);
+	  		cpsw_device->mdio->phys[0].construct("slave", "rmii", 0x20000000, 0, 41); // TODO/Cleanup: 0x4a100100);
+	  		cpsw_device->mdio->phys[1].construct("slave", "mii" , 0x200100, 1, 42); //0 TODO/Cleanup: x4a100200);
 	  		cpsw_device->mdio->phy_sel.construct("cpsw-phy-sel", "ti,am3352-cpsw-phy-sel", 0x44e10650); //the register is the gmii_sel register
 
 	  		if (cpsw_device->mdio.constructed()) {
@@ -655,18 +654,19 @@ void * devm_ioremap_resource(struct device *dev, struct resource *res)
 
 	//if (Genode::strcmp(cpsw->name.string(), "mdio") == 0) {
 		if (dev->plat_dev->id == 3) {
-		Cpsw::Mdio * mdio = (Cpsw::Mdio*) dev->plat_dev->dev.of_node;
-		Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for mdio..., mdio name: ", mdio->name);
-		return mdio->io_ds.local_addr<void>();
+			//Cpsw::Mdio * mdio = (Cpsw::Mdio*) dev->plat_dev->dev.of_node;
+		//Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for mdio..., mdio name: ", mdio->name);
+			//return mdio->io_ds.local_addr<void>();
+			return cpsw_device->io_ds.local_addr<void>()+0x1000;
 
 		//} else if (Genode::strcmp(cpsw->name.string(), "cpsw-phy-sel") == 0) {
 		} else if (dev->plat_dev-> id == 2) {
-			Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for phy_sel...");
+			//Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for phy_sel...");
 			Cpsw::Mdio::Phy_sel * phy_sel = (Cpsw::Mdio::Phy_sel *) dev->plat_dev->dev.of_node;
 			return phy_sel->io_ds.local_addr<void>();
 		} else if (dev->plat_dev->id == 1) {
 		//} else if (Genode::strcmp(cpsw->name.string(), "cpsw") == 0) {
-			Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for cpsw...");
+			//Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for cpsw...");
 			Cpsw * cpsw = (Cpsw *) dev->plat_dev->dev.of_node;
 			return cpsw->io_ds.local_addr<void>();
 	}
@@ -678,6 +678,7 @@ void * devm_ioremap_resource(struct device *dev, struct resource *res)
 
 void *_ioremap(phys_addr_t phys_addr, size_t size, int wc)
 {
+	Genode::log("Trying to map: ", phys_addr, " ", size);
 	try {
 		Genode::Attached_io_mem_dataspace *ds = new(Lx::Malloc::mem())
 			Genode::Attached_io_mem_dataspace(phys_addr, size, !!wc);
@@ -691,7 +692,8 @@ void *_ioremap(phys_addr_t phys_addr, size_t size, int wc)
 /* More elegant solution like in devm_ioremap would be better */
 void *ioremap(phys_addr_t offset, size_t size) {
 	// return Lx::ioremap(offset, size, Genode::UNCACHED); /* TODO - evaluate if lxkit function can be ported/made usable */
-	return _ioremap(offset, size, 0);
+	//return _ioremap(offset, size, 0);
+	return cpsw_device->io_ds.local_addr<void>() + 0x2000;
 }
 
 
@@ -712,7 +714,7 @@ int of_get_phy_mode(struct device_node *np)
 	for (int i = 0; i < PHY_INTERFACE_MODE_MAX; i++) {
 		if (!Genode::strcmp(cpsw_device->mdio->phys[np->id]->phy_mode.string(),
 												phy_modes((phy_interface_t)i))) {
-			Genode::log("Setting mode of ", np->name, " ", np->id, " to mode: ", cpsw_device->mdio->phys[np->id]->phy_mode.string());
+			//Genode::log("Setting mode of ", np->name, " ", np->id, " to mode: ", cpsw_device->mdio->phys[np->id]->phy_mode.string());
 			return i;
 		}
 	}
@@ -800,20 +802,21 @@ void *dev_get_platdata(const struct device *dev)
 
 int netif_running(const struct net_device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__, "dev: ", dev);
+	//Genode::log(__PRETTY_FUNCTION__, "dev: ", dev);
 	return dev->state & (1 << __LINK_STATE_START);
 }
 
 
 void netif_carrier_on(struct net_device *dev)
 {
+	//Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
 	dev->state &= ~(1UL << __LINK_STATE_NOCARRIER);
 
 	if (Genode::strcmp(dev->name, "netd0") == 0) {
-	  Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
+		// Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
 	  if (cpsw_device->session0) cpsw_device->session0->link_state(true);
 	} else if (Genode::strcmp(dev->name, "netd1") == 0) {
-	  Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
+	  //Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
 	  if (cpsw_device->session1) cpsw_device->session1->link_state(true);
 	} else {
 		Genode::error("unkown device!");
@@ -823,15 +826,15 @@ void netif_carrier_on(struct net_device *dev)
 
 void netif_carrier_off(struct net_device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__, "device: ", dev->name, "state: ", dev->state);
+	//Genode::log(__PRETTY_FUNCTION__, "device: ", dev->name, "state: ", dev->state);
 	dev->state |= 1UL << __LINK_STATE_NOCARRIER;
-	Genode::log(__PRETTY_FUNCTION__, "device: ", dev->name, "state: ", dev->state);
+	//Genode::log(__PRETTY_FUNCTION__, "device: ", dev->name, "state: ", dev->state);
 
 	if (Genode::strcmp(dev->name, "netd0") == 0) {
-	  Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
+		// Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
 	  if (cpsw_device->session0) cpsw_device->session0->link_state(false);
 	} else if (Genode::strcmp(dev->name, "netd1") == 0) {
-	  Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
+	  //Genode::log(__PRETTY_FUNCTION__, "dev: ", dev, dev->name);
 	  if (cpsw_device->session1) cpsw_device->session1->link_state(false);
 	} else {
 		Genode::error("unkown device!");
@@ -841,7 +844,7 @@ void netif_carrier_off(struct net_device *dev)
 
 int netif_device_present(struct net_device * d)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return 1;
 }
@@ -850,9 +853,8 @@ int netif_device_present(struct net_device * d)
 
 int platform_get_irq(struct platform_device * d, unsigned int i)
 {
-	Genode::log(__PRETTY_FUNCTION__, " Asking for: ", i , " - getting: ", cpsw_device->irq +i -1 );
+	//Genode::log(__PRETTY_FUNCTION__, " Asking for: ", i , " - getting: ", cpsw_device->irq +i -1 );
 	if (i > 4) return -1;
-
 
 	return cpsw_device->irq + i -1;
 }
@@ -868,7 +870,7 @@ int devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler
 
 struct clk *devm_clk_get(struct device *dev, const char *id)
 {
-	Genode::log("devm_clk_get ", dev->plat_dev->id, " id: ", id);
+	//	Genode::log("devm_clk_get ", dev->plat_dev->id, " id: ", id);
 	static struct clk clocks[] {
 														//{ "fck-mdio", 22*1000*1000 },
 		{ "fck", 125*1000*1000 },
@@ -921,7 +923,7 @@ int register_netdev(struct net_device * ndev)
 
 	//Genode::log(__PRETTY_FUNCTION__, " Succeeded to register netdev...");
 	//return 0;
-	Genode::log("register_netdev: registering device: ", ndev);
+	//Genode::log("register_netdev: registering device: ", ndev);
 
 	using namespace Genode;
 	static bool announce = false;
@@ -930,18 +932,18 @@ int register_netdev(struct net_device * ndev)
 
 	//Nic_device *nic = Nic_device::add(ndev);
 	//Cpsw * cpsw = (Cpsw*) ndev->dev.of_node;
-	Genode::log("register_netdev: device: ", ndev->name);
-	Genode::log("register_netdev: device: ", ndev->dev.of_node);
+	//Genode::log("register_netdev: device: ", ndev->name);
+	//Genode::log("register_netdev: device: ", ndev->dev.of_node);
 	if (!cpsw_device->net_dev0) {
-		Genode::log("devname before: ", ndev->name);
+		//Genode::log("devname before: ", ndev->name);
 	  cpsw_device->net_dev0 = ndev;
 	  cpsw_device->net_dev0->name = "netd0";
-		Genode::log("devname after: ", ndev->name, cpsw_device->net_dev0->name);
+		//Genode::log("devname after: ", ndev->name, cpsw_device->net_dev0->name);
 	} else if (!cpsw_device->net_dev1) {
 	  cpsw_device->net_dev1 = ndev;
 	  cpsw_device->net_dev1->name = "netd1";
 		//	marker = true;
-		Genode::log("devname after: ", ndev->name, cpsw_device->net_dev1->name);
+		//Genode::log("devname after: ", ndev->name, cpsw_device->net_dev1->name);
 	}
 	//cpsw->net_dev0 = ndev;
 
@@ -954,22 +956,22 @@ int register_netdev(struct net_device * ndev)
 
 		ndev->state |= 1 << __LINK_STATE_START;
 
-		if (err = ndev ->netdev_ops->ndo_open(ndev))
-			//	return err;
+		if (err = ndev ->netdev_ops->ndo_open(ndev)) {
+		     Genode::log("err is: ", err);
+				return err;
+		}
 
-		Genode::log("err is: ", err);
 
 		if (marker && ndev ->netdev_ops->ndo_set_rx_mode) {
 			ndev->netdev_ops->ndo_set_rx_mode(ndev);
-			Genode::log("in set rx mode");
+			//Genode::log("in set rx mode");
 		}
 
 		//_nic = nic;
 		//_signal->parent().announce(_signal->ep().rpc_ep().manage(&root));
 		//}
-	Genode::log("err is: ", err);
+		//Genode::log("err is: ", err);
 
-	return 0;
 	return err;
 }
 
@@ -1201,14 +1203,14 @@ extern "C" void consume_skb(struct sk_buff *skb);
 
 void dev_kfree_skb_any(struct sk_buff * sk)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	consume_skb(sk);
 }
 
 
 void napi_enable(struct napi_struct *n)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	clear_bit(NAPI_STATE_SCHED, &n->state);
 	clear_bit(NAPI_STATE_NPSVC, &n->state);
 }
@@ -1216,7 +1218,7 @@ void napi_enable(struct napi_struct *n)
 
 void napi_disable(struct napi_struct *n)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	set_bit(NAPI_STATE_SCHED, &n->state);
 	set_bit(NAPI_STATE_NPSVC, &n->state);
 }
@@ -1224,7 +1226,7 @@ void napi_disable(struct napi_struct *n)
 
 void __napi_schedule(struct napi_struct *n)
 {
-	Genode::log(__PRETTY_FUNCTION__, " ", n->dev->name, " - need logic");
+	//Genode::log(__PRETTY_FUNCTION__, " ", n->dev->name, " - need logic");
 	if (cpsw_device->session0) cpsw_device->session0->unblock_rx_task(n);
 	//HVB Todo: need logic for session 1
 }
@@ -1232,14 +1234,14 @@ void __napi_schedule(struct napi_struct *n)
 
 bool napi_schedule_prep(struct napi_struct *n)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	return !test_and_set_bit(NAPI_STATE_SCHED, &n->state);
 }
 
 
 void napi_complete(struct napi_struct *n)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	clear_bit(NAPI_STATE_SCHED, &n->state);
 }
 
@@ -1337,7 +1339,7 @@ gro_result_t napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 
 void dma_unmap_single(struct device *dev, dma_addr_t addr, size_t size, enum dma_data_direction dir)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	// FIXME
 	TRACE;
 }
@@ -1345,7 +1347,7 @@ void dma_unmap_single(struct device *dev, dma_addr_t addr, size_t size, enum dma
 
 bool netif_queue_stopped(const struct net_device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	// FIXME
 	TRACE;
 	return 0;
@@ -1354,10 +1356,9 @@ bool netif_queue_stopped(const struct net_device *dev)
 
 struct device_node *of_parse_phandle(const struct device_node *np, const char *phandle_name, int index)
 {
-	Genode::log(__PRETTY_FUNCTION__, "If it is successful, it returns just the node - doing the same for node:", np->name, " ", np->id, " ", np);
+	//Genode::log(__PRETTY_FUNCTION__, "If it is successful, it returns just the node - doing the same for node:", np->name, " ", np->id, " ", np);
 	// TODO: this seems to be wrong, because the second phy cannot be loaded this way...
 	return nullptr; // there is no phy-handle property in the device tree, therrefore we return 0
-	//return (device_node*) np;
 }
 
 
@@ -1366,18 +1367,18 @@ struct phy_device *of_phy_connect(struct net_device *dev,
                                   void (*hndlr)(struct net_device *),
                                   u32 flags, int iface)
 {
-	Genode::log(__PRETTY_FUNCTION__, "phy_np name: ", phy_np->name);
+	//Genode::log(__PRETTY_FUNCTION__, "phy_np name: ", phy_np->name);
 	Cpsw::Mdio::Phy * phy = (Cpsw::Mdio::Phy*) phy_np;
-	Genode::log(__PRETTY_FUNCTION__, "phy: ", phy);
+	//Genode::log(__PRETTY_FUNCTION__, "phy: ", phy);
 	struct phy_device * phydev = phy ? phy->phy_dev : nullptr;
-	Genode::log(__PRETTY_FUNCTION__, "phy dev: ", phy->phy_dev);
+	//Genode::log(__PRETTY_FUNCTION__, "phy dev: ", phy->phy_dev);
 
 	if (!phydev) return nullptr;
 
 	phydev->dev_flags = flags;
 	int ret = phy_connect_direct(dev, phydev, hndlr, (phy_interface_t)iface);
 
-	Genode::log(__PRETTY_FUNCTION__, "ret value: ", ret);
+	//Genode::log(__PRETTY_FUNCTION__, "ret value: ", ret);
 	return ret ? nullptr : phydev;
 }
 
@@ -1385,7 +1386,7 @@ struct phy_device *of_phy_connect(struct net_device *dev,
 struct device_node *of_get_child_by_name(const struct device_node *node,
                                          const char *name)
 {
-	Genode::log(__PRETTY_FUNCTION__, "searching for: ", name);
+	//Genode::log(__PRETTY_FUNCTION__, "searching for: ", name);
 	if (Genode::strcmp("cpsw-phy-sel", name) == 0)
 	  return cpsw_device->mdio->phy_sel->pdev->dev.of_node;
 
@@ -1398,11 +1399,11 @@ struct device_node *of_get_child_by_name(const struct device_node *node,
 static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 {
 		struct phy_device * phy =  (struct phy_device*) get_phy_device(mdio, ph.phy_reg, false);
-		Genode::log(__PRETTY_FUNCTION__, "err status of phy( ph: ", ph.phy_reg, "/",phy, " ):", IS_ERR(phy));
+		//Genode::log(__PRETTY_FUNCTION__, "err status of phy( ph: ", ph.phy_reg, "/",phy, " ):", IS_ERR(phy));
 
 		if (!phy || IS_ERR(phy)) return 1;
 
-		Genode::log(__PRETTY_FUNCTION__, " We are registering interrupt ", ph.gpio_irq, " for ", phy);
+		//Genode::log(__PRETTY_FUNCTION__, " We are registering interrupt ", ph.gpio_irq, " for ", phy);
 
 		phy->irq         = ph.gpio_irq;
 		phy->dev.of_node = (device_node*) &ph;
@@ -1410,7 +1411,7 @@ static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 		/* All data is now stored in the phy struct;
 		 * register it */
 		int rc = phy_device_register(phy);
-		Genode::log(__PRETTY_FUNCTION__, " rc value: ", rc);
+		//Genode::log(__PRETTY_FUNCTION__, " rc value: ", rc);
 		if (rc) {
 			phy_device_free(phy);
 			return 1;
@@ -1426,13 +1427,13 @@ static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 
 int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 {
-	Genode::log(__PRETTY_FUNCTION__, "searching breakage");
+	//Genode::log(__PRETTY_FUNCTION__, "searching breakage");
 
 	mdio->phy_mask = ~0;
 
 	/* Clear all the IRQ properties */
 	if (mdio->irq) {
-		Genode::log("DEBUG: interrupt in mdio bus");
+		//Genode::log("DEBUG: interrupt in mdio bus");
 		for (unsigned i = 0; i<PHY_MAX_ADDR; i++)
 			mdio->irq[i] = PHY_POLL;
 	}
@@ -1444,7 +1445,7 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 	if (rc) return rc;
 
 	cpsw_device->mdio->for_each([&] (Cpsw::Mdio::Phy & phy) {
-										 Genode::log("trying to register phy to mdiobus for: ", phy.phy_id);
+										 //Genode::log("trying to register phy to mdiobus for: ", phy.phy_id);
 										 of_mdiobus_register_phy(phy, mdio);
 										 ;
 	});
@@ -1464,12 +1465,12 @@ int of_driver_match_device(struct device *dev, const struct device_driver *drv)
 // HVB-Todo
 const void *of_get_property(const struct device_node *node, const char *name, int *lenp)
 {
-	Genode::log(__PRETTY_FUNCTION__, " - requesting ", name, " from ", *node->name, "id: ", node->id); //, " with property name: ", node->properties->name);
+	//Genode::log(__PRETTY_FUNCTION__, " - requesting ", name, " from ", *node->name, "id: ", node->id); //, " with property name: ", node->properties->name);
 	if (Genode::strcmp("phy_id", name) == 0) {
 		*lenp = 2 * sizeof(u32);
 		return &cpsw_device->mdio->phys[node->id]->prop->value;
 	} else {
-		Genode::log(__PRETTY_FUNCTION__, " getting phy_id/not implemented for node: ", node->name);
+		//Genode::log(__PRETTY_FUNCTION__, " getting phy_id/not implemented for node: ", node->name);
 	}
 
 	TRACE_AND_STOP;
@@ -1487,14 +1488,14 @@ void *devm_kzalloc(struct device *dev, size_t size, gfp_t gfp)
 int request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags, const char *name, void *dev)
 {
 	new (Lx::Malloc::mem()) Gpio_irq(Lx_kit::env().env(), irq, handler, dev);
-	Genode::log("request_irq");
+	//Genode::log("request_irq");
 	return 0;
 }
 
 
 int enable_irq(unsigned int irq)
 {
-	//Genode::log("enable_irq");
+	Genode::log("enable_irq");
 	for (Gpio_irq *girq = Gpio_irq::list()->first(); girq; girq = girq->next())
 		if (girq->irq_nr == irq) {
 			girq->enable();
@@ -1557,33 +1558,33 @@ u64 timecounter_read(struct timecounter *tc)
 
 void clk_disable_unprepare(struct clk * c)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE_AND_STOP;
 }
 
 int clk_prepare_enable(struct clk * c)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	//	TRACE_AND_STOP;
 	return 0;
 }
 
 void device_initialize(struct device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 int device_init_wakeup(struct device *dev, bool val)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return 0;
 }
 
 struct regulator *__must_check devm_regulator_get(struct device *dev, const char *id)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return nullptr;
 }
@@ -1613,14 +1614,14 @@ bool of_phy_is_fixed_link(struct device_node *np)
 
 int pinctrl_pm_select_default_state(struct device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return -1;
 }
 
 int pinctrl_pm_select_sleep_state(struct device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return -1;
 }
@@ -1699,64 +1700,64 @@ int try_module_get(struct module *mod)
 
 struct device *get_device(struct device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return dev;
 }
 
 int device_bind_driver(struct device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return 0;
 }
 
 void netif_tx_start_all_queues(struct net_device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void netif_tx_lock_bh(struct net_device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 int  device_set_wakeup_enable(struct device *dev, bool enable)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return 0;
 }
 
 void trace_consume_skb(struct sk_buff * sb)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void trace_kfree_skb(struct sk_buff * sb, void * p)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void netif_tx_unlock_bh(struct net_device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void netif_wake_queue(struct net_device * d)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 bool netdev_uses_dsa(struct net_device *dev)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return false;
 }
@@ -1764,14 +1765,14 @@ bool netdev_uses_dsa(struct net_device *dev)
 void dma_sync_single_for_device(struct device *dev, dma_addr_t addr,
                                 size_t size, enum dma_data_direction dir)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void dma_sync_single_for_cpu(struct device *dev, dma_addr_t addr, size_t size,
                              enum dma_data_direction dir)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
@@ -1783,20 +1784,20 @@ void of_node_put(struct device_node *node)
 
 const void *of_get_mac_address(struct device_node *np)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return nullptr;
 }
 
 void rtnl_lock(void)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void rtnl_unlock(void)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
@@ -1882,7 +1883,7 @@ int of_property_read_u32(const struct device_node *np, const char *propname, u32
 	}
 
  	else if (Genode::strcmp("dual_emac_res_vlan", propname) == 0) {
-		Genode::log("of_property_read_u32: query for: dual_emac_res_vlan, for node:", np->name);
+		//Genode::log("of_property_read_u32: query for: dual_emac_res_vlan, for node:", np->name);
 	  if (np->id == 0) {
 		  *out_value = 1;
 	  } else if (np->id == 1) {
@@ -1894,9 +1895,8 @@ int of_property_read_u32(const struct device_node *np, const char *propname, u32
 	}
 
  	else if (Genode::strcmp("bus_freq", propname) == 0) {
-		Genode::log("of_property_read_u32: bus_freq for node " , np->name);
 	  if (Genode::strcmp(np->name, "mdio") == 0) {
-		  Genode::log("of_property_read_u32: in bus_freq mdio branch ");
+		  //Genode::log("of_property_read_u32: in bus_freq mdio branch ");
 		  *out_value = 0xf4240;
 		} else {
 		  Genode::log("of_property_read_u32: in bus_freq else branch else: " , np->name);
@@ -1920,7 +1920,7 @@ int of_property_read_u32(const struct device_node *np, const char *propname, u32
 
  	else if (Genode::strcmp("max-speed", propname) == 0) {
 		/* Not in the device tree file */
-		Genode::log("of_property_read_u32: query for: max_speed");
+		//Genode::log("of_property_read_u32: query for: max_speed");
 		TRACE;
 	}
 
@@ -1968,7 +1968,7 @@ int of_platform_populate(struct device_node *root,
 struct device_node *of_get_next_child(const struct device_node *node,
 					     struct device_node *prev)
 {
-	Genode::log("In of_get_next child, node: ",node," - prev: ", prev);
+	//Genode::log("In of_get_next child, node: ",node," - prev: ", prev);
 	Cpsw * cpsw = (Cpsw*) node;
 	// TODO hvb - most likely extend/modify struct
 	if (prev == (struct device_node*) 0xffffffff) return nullptr;
@@ -1977,7 +1977,7 @@ struct device_node *of_get_next_child(const struct device_node *node,
 }
 
 int strcmp(const char *s1, const char *s2) {
-	Genode::log(__PRETTY_FUNCTION__, "Comparing ",s1, " against ", s2);
+	//Genode::log(__PRETTY_FUNCTION__, "Comparing ",s1, " against ", s2);
 	// called in cpsw.c by "if(strcmp(slave_node->name, "slave")) return warning about no slave nodes)
 	return Genode::strcmp(s1, s2);
 	TRACE_AND_STOP;
@@ -2071,7 +2071,7 @@ void free_netdev(struct net_device * d)
 
 bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 {
-	Genode::log(__PRETTY_FUNCTION__);
+	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	//HVB: TODO
 	return true;
@@ -2178,7 +2178,7 @@ struct device_node *of_find_node_by_phandle(phandle handle)
 struct platform_device *of_find_device_by_node(struct device_node *np)
 {
 	Cpsw * cpsw = (Cpsw*) &cpsw_device;
-	Genode::log(__PRETTY_FUNCTION__, " np: ", np);
+	//Genode::log(__PRETTY_FUNCTION__, " np: ", np);
 
 	return cpsw->mdio->pdev;
 }
@@ -2190,7 +2190,7 @@ void *devres_alloc(dr_release_t release, size_t size, gfp_t gfp)
 	struct mii_bus * mb = (struct mii_bus*) Lx::Malloc::dma().alloc(size);
   TRACE;
   cpsw->mdio->mii_bus = mb;
-	Genode::log(__PRETTY_FUNCTION__, " - returning: ", &cpsw->mdio->mii_bus);
+	//Genode::log(__PRETTY_FUNCTION__, " - returning: ", &cpsw->mdio->mii_bus);
 	return &cpsw->mdio->mii_bus;
 }
 
@@ -2203,13 +2203,13 @@ void devres_add(struct device *dev, void *res)
 int of_get_child_count(const struct device_node *np)
 {
 	struct device_node *child;
-	Genode::log(__PRETTY_FUNCTION__, " name of node: ", np->name);
+	//Genode::log(__PRETTY_FUNCTION__, " name of node: ", np->name);
 	int num = 0;
 
 	for_each_child_of_node(np, child)
 		num++;
 
-	Genode::log(__PRETTY_FUNCTION__, " returning num: ", num);
+	//Genode::log(__PRETTY_FUNCTION__, " returning num: ", num);
 	return num;
 }
 
@@ -2243,7 +2243,7 @@ struct property *of_find_property(const struct device_node *np,
 	if (Genode::strcmp(name, "smsc,disable-energy-detect") == 0)
 		return (struct property *) 0x1;
 
-	Genode::log(__PRETTY_FUNCTION__, " searched for: ", name);
+	//Genode::log(__PRETTY_FUNCTION__, " searched for: ", name);
 
 	TRACE_AND_STOP;
 }
@@ -2326,7 +2326,7 @@ struct timespec64 ns_to_timespec64(const s64 nsec)
 }
 
 int get_phy_id(struct device_node *node) {
-	Genode::log("Name: ", node->name, "Id: ", node->id);
+	//Genode::log("Name: ", node->name, "Id: ", node->id);
 	return node->id;
 }
 // ALE

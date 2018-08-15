@@ -20,14 +20,14 @@ extern "C" {
 
 void Session_component::_run_rx_task(void * args)
 {
-	// Genode::log(__PRETTY_FUNCTION__, "args: ", args);
+	 Genode::log(__PRETTY_FUNCTION__, "args: ", args);
 	Rx_data *data = static_cast<Rx_data*>(args);
 
 	while (1) {
 		Lx::scheduler().current()->block_and_schedule();
 
 		int ret = 0;
-	  // Genode::log(__PRETTY_FUNCTION__, "napi: ", data->napi);
+	   Genode::log(__PRETTY_FUNCTION__, "napi: ", data->napi);
 		struct napi_struct * n = data->napi;
 
 		for (;;) {
@@ -48,14 +48,14 @@ void Session_component::_run_rx_task(void * args)
 
 			Genode::warning("Too much incoming traffic, we should schedule RX more intelligent");
 		}
-		// Genode::log("leaving _run_rx_task...");
+		 Genode::log("leaving _run_rx_task...");
 	}
 }
 
 
 void Session_component::_run_tx_task(void * args)
 {
-	// Genode::log(__PRETTY_FUNCTION__);
+	 Genode::log(__PRETTY_FUNCTION__);
 	Tx_data *data = static_cast<Tx_data*>(args);
 
 	while (1) {
@@ -66,13 +66,13 @@ void Session_component::_run_tx_task(void * args)
 
 		ndev->netdev_ops->ndo_start_xmit(skb, ndev);
 	}
-	// Genode::log("leavon _run_tx_task...");
+	 Genode::log("leavon _run_tx_task...");
 }
 
 
 bool Session_component::_send()
 {
-	// Genode::log(__PRETTY_FUNCTION__);
+	 Genode::log(__PRETTY_FUNCTION__);
 	using namespace Genode;
 
 	/*
@@ -108,51 +108,51 @@ bool Session_component::_send()
 
 	_tx.sink()->acknowledge_packet(packet);
 
-	// Genode::log("leaving _send...");
+	 Genode::log("leaving _send...");
 	return true;
 }
 
 
 void Session_component::_handle_rx()
 {
-	// Genode::log(__PRETTY_FUNCTION__);
+	 Genode::log(__PRETTY_FUNCTION__);
 	while (_rx.source()->ack_avail()) {
-		// Genode::log("Packet available....");
+		 Genode::log("Packet available....");
 		_rx.source()->release_packet(_rx.source()->get_acked_packet());
 	}
-	// Genode::log("leaving _handle_rx");
+	 Genode::log("leaving _handle_rx");
 }
 
 
 void Session_component::_handle_packet_stream()
 {
-	// Genode::log(__PRETTY_FUNCTION__);
+	 Genode::log(__PRETTY_FUNCTION__);
 	_handle_rx();
 
 	while (_send()) continue;
-	// Genode::log("leaving _handle_packet_stream");
+	 Genode::log("leaving _handle_packet_stream");
 }
 
 
 void Session_component::unblock_rx_task(napi_struct * n)
 {
-	// Genode::log(__PRETTY_FUNCTION__);
+	 Genode::log(__PRETTY_FUNCTION__);
 	_rx_data.napi = n;
 	_rx_task.unblock();
-	// Genode::log("leaving unblock_rx_task");
+	 Genode::log("leaving unblock_rx_task");
 }
 
 
 Nic::Mac_address Session_component::mac_address()
 {
-	// Genode::log(__PRETTY_FUNCTION__);
+	 Genode::log(__PRETTY_FUNCTION__);
 	return _ndev ? Nic::Mac_address(_ndev->dev_addr) : Nic::Mac_address();
 }
 
 
 void Session_component::receive(struct sk_buff *skb)
 {
-	// Genode::log(__PRETTY_FUNCTION__);
+	 Genode::log(__PRETTY_FUNCTION__);
 	_handle_rx();
 
 	if (!_rx.source()->ready_to_submit()) {
@@ -174,18 +174,18 @@ void Session_component::receive(struct sk_buff *skb)
 	} catch (...) {
 		Genode::warning("failed to process received packet");
 	}
-	// Genode::log("leaving receive");
+	 Genode::log("leaving receive");
 }
 
 
 void Session_component::link_state(bool link)
 {
-	// Genode::log(__PRETTY_FUNCTION__);
+	 Genode::log(__PRETTY_FUNCTION__);
 	if (link == _has_link) return;
 
 	_has_link = link;
 	_link_state_changed();
-	// Genode::log("after link_state has changed");
+	 Genode::log("after link_state has changed");
 }
 
 
@@ -198,5 +198,6 @@ Session_component::Session_component(Genode::size_t const  tx_buf_size,
   _ndev(_register_session_component(*this, label)),
   _has_link(_ndev ? !(_ndev->state & (1UL << __LINK_STATE_NOCARRIER)) : false)
 {
+	Genode::log("Rx: ", rx_buf_size, " - Tx: ", tx_buf_size);
 	if (!_ndev) throw Genode::Service_denied();
 }
