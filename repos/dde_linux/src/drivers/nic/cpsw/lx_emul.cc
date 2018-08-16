@@ -44,6 +44,15 @@
 
 extern "C" { struct page; }
 
+enum cpsw_id {
+							CPSW_ID    = 1,
+							PHY_SEL_ID = 2,
+							MDIO_ID    = 3,
+};
+
+
+
+
 class Control_module : private Genode::Attached_io_mem_dataspace, Genode::Mmio
 {
   private:
@@ -91,21 +100,21 @@ class Control_module : private Genode::Attached_io_mem_dataspace, Genode::Mmio
 
 static resource _cpsw_resource[] =
 {
- { 0x4a100000, 0x800, "cpsw-regs", IORESOURCE_MEM },
- { 0x4a101200, 0x100, "cpsw-regs", IORESOURCE_MEM },
- { 0x28, 0x28, "3pgswrxthr0-irq" /* name unused */, IORESOURCE_IRQ },
- { 0x29, 0x29, "3pgwsrxint0-irq" /* name unused */, IORESOURCE_IRQ },
- { 0x2a, 0x2a, "3pgwstxint0-irq" /* name unused */, IORESOURCE_IRQ },
- { 0x2b, 0x2b, "3pgwsmisc0-irq" /* name unused */, IORESOURCE_IRQ },
+  { 0x4a100000, 0x800, "cpsw-regs", IORESOURCE_MEM },
+  { 0x4a101200, 0x100, "cpsw-regs", IORESOURCE_MEM },
+  { 0x28, 0x28, "3pgswrxthr0-irq" /* name unused */, IORESOURCE_IRQ },
+  { 0x29, 0x29, "3pgwsrxint0-irq" /* name unused */, IORESOURCE_IRQ },
+  { 0x2a, 0x2a, "3pgwstxint0-irq" /* name unused */, IORESOURCE_IRQ },
+  { 0x2b, 0x2b, "3pgwsmisc0-irq" /* name unused */, IORESOURCE_IRQ },
 };
 
 static resource _mdio_resource[] =
 {
- { 0x4a101000, 0x100, "mdio-regs", IORESOURCE_MEM },
+  { 0x4a101000, 0x100, "mdio-regs", IORESOURCE_MEM },
 };
 
 static resource _cpsw_phy_sel_resource[] = {
- { 0x44e10650, 0x04,  "gmii-sel",  IORESOURCE_MEM },
+  {0x44e10650  , 0x04,  "gmii-sel",  IORESOURCE_MEM },
 };
 
 class Addr_to_page_mapping : public Genode::List<Addr_to_page_mapping>::Element
@@ -414,6 +423,10 @@ net_device * Session_component::_register_session_component(Session_component & 
 
 extern "C" {
 
+
+struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
+struct list_head ptype_all __read_mostly;	/* Taps */
+
 void lx_backtrace() { Genode::backtrace(); }
 
 int platform_driver_register(struct platform_driver * drv)
@@ -433,8 +446,8 @@ int platform_driver_register(struct platform_driver * drv)
 	  		cpsw_device.construct(name, type, irq, mmio);
 
 	  		cpsw_device->mdio.construct("mdio", "ti,davinci_mdio");
-	  		cpsw_device->mdio->phys[0].construct("slave", "rmii", 0x20000000, 0, 41); // TODO/Cleanup: 0x4a100100);
-	  		cpsw_device->mdio->phys[1].construct("slave", "mii" , 0x200100, 1, 42); //0 TODO/Cleanup: x4a100200);
+	  		cpsw_device->mdio->phys[0].construct("slave", "rmii", 0x20000000, 0, 98); // TODO/Cleanup: 0x4a100100);
+	  		cpsw_device->mdio->phys[1].construct("slave", "mii" , 0x200100, 1, 43); //0 TODO/Cleanup: x4a100200);
 	  		cpsw_device->mdio->phy_sel.construct("cpsw-phy-sel", "ti,am3352-cpsw-phy-sel", 0x44e10650); //the register is the gmii_sel register
 
 	  		if (cpsw_device->mdio.constructed()) {
@@ -464,7 +477,7 @@ int platform_driver_register(struct platform_driver * drv)
 	  pd_mdio->dev.plat_dev = pd_mdio;
 	  pd_mdio->resource = _mdio_resource;
 	  pd_mdio->num_resources = 1;
-		pd_mdio->id = 3;
+		pd_mdio->id = MDIO_ID;
 	  cpsw_device->mdio->pdev = pd_mdio;
 
 		pd_mdio->dev.of_node->name = "mdio";
@@ -477,7 +490,7 @@ int platform_driver_register(struct platform_driver * drv)
 		pd_phy_sel->dev.plat_dev = pd_phy_sel;
 		pd_phy_sel->resource = _cpsw_phy_sel_resource;
 		pd_phy_sel->num_resources = 1;
-		pd_phy_sel->id = 2;
+		pd_phy_sel->id = PHY_SEL_ID;
 
 		cpsw_device->mdio->phy_sel->pdev = pd_phy_sel;
 		pd_phy_sel->dev.of_node->name = "cpsw-phy-sel";
@@ -493,7 +506,7 @@ int platform_driver_register(struct platform_driver * drv)
 		pd_cpsw->dev.plat_dev = pd_cpsw;
 		pd_cpsw->resource = _cpsw_resource;
 		pd_cpsw->num_resources = 6;
-		pd_cpsw->id = 1;
+		pd_cpsw->id = CPSW_ID;
 
 		cpsw_device->pdev = pd_cpsw;
 		pd_cpsw->dev.of_node->child = cpsw_device->mdio->pdev->dev.of_node;
@@ -536,6 +549,13 @@ int platform_driver_register(struct platform_driver * drv)
 		pd_phy1->dev.of_node->id       = 1;
 		pd_phy0->dev.of_node->properties = prop0;
 		pd_phy1->dev.of_node->properties = prop1;
+
+
+		/* Required for netif_receive_skb */
+		ptype_all = LIST_HEAD_INIT(ptype_all);
+		for (int i = 0; i < PTYPE_HASH_SIZE; i++) {
+			ptype_base[i] = LIST_HEAD_INIT(ptype_base[i]);
+		}
 	}
 
 	/* starting the driver itself */
@@ -614,6 +634,9 @@ struct net_device *alloc_netdev_mqs(int sizeof_priv, const char *name,
 	struct net_device *dev = PTR_ALIGN(p, NETDEV_ALIGN);
 
 	INIT_LIST_HEAD(&dev->mc.list);
+  INIT_LIST_HEAD(&dev->napi_list);
+	INIT_LIST_HEAD(&dev->ptype_all);
+	INIT_LIST_HEAD(&dev->ptype_specific);
 	dev->mc.count = 0;
 
 	dev->gso_max_segs = GSO_MAX_SEGS;
@@ -649,29 +672,21 @@ const struct of_device_id *of_match_device(const struct of_device_id *matches,
 
 void * devm_ioremap_resource(struct device *dev, struct resource *res)
 {
-	//Cpsw * cpsw = (Cpsw*) dev->plat_dev->dev.of_node;
-	//Genode::log(__PRETTY_FUNCTION__ , "name of dev: ", cpsw->name, " res addr: ", res, " id: ", cpsw->pdev->id);
-
-	//if (Genode::strcmp(cpsw->name.string(), "mdio") == 0) {
-		if (dev->plat_dev->id == 3) {
-			//Cpsw::Mdio * mdio = (Cpsw::Mdio*) dev->plat_dev->dev.of_node;
-		//Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for mdio..., mdio name: ", mdio->name);
-			//return mdio->io_ds.local_addr<void>();
-			return cpsw_device->io_ds.local_addr<void>()+0x1000;
-
-		//} else if (Genode::strcmp(cpsw->name.string(), "cpsw-phy-sel") == 0) {
-		} else if (dev->plat_dev-> id == 2) {
-			//Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for phy_sel...");
-			Cpsw::Mdio::Phy_sel * phy_sel = (Cpsw::Mdio::Phy_sel *) dev->plat_dev->dev.of_node;
-			return phy_sel->io_ds.local_addr<void>();
-		} else if (dev->plat_dev->id == 1) {
-		//} else if (Genode::strcmp(cpsw->name.string(), "cpsw") == 0) {
-			//Genode::log(__PRETTY_FUNCTION__, " - requested ioremap for cpsw...");
-			Cpsw * cpsw = (Cpsw *) dev->plat_dev->dev.of_node;
-			return cpsw->io_ds.local_addr<void>();
+	if (res->start == Am335x::CPSW_SS_BASE) {
+	  //Genode::log("Requesting CPSW_SS regs...");
+		return cpsw_device->io_ds.local_addr<void>();
+	} else if (res->start == Am335x::CPSW_WR){
+		//Genode::log("Requesting CPSR_WR regs...");
+		return cpsw_device->io_ds.local_addr<void>()+0x1200;
+	} else if (res->start == Am335x::MDIO) {
+		//Genode::log("Requesting MDIO regs");
+		return cpsw_device->io_ds.local_addr<void>()+0x1000;
+	} else if (res->start == 0x44e10650 ) {
+		//Genode::log("Requesting GMII_SEL for PHY_SEL");
+		return cpsw_device->mdio->phy_sel->io_ds.local_addr<void>();
 	}
 
-		//Genode::warning("devm_ioremap_resource is not implemented for ", cpsw->name);
+	Genode::log("Should not see me ", res);
 	TRACE_AND_STOP;
 }
 
@@ -691,8 +706,6 @@ void *_ioremap(phys_addr_t phys_addr, size_t size, int wc)
 
 /* More elegant solution like in devm_ioremap would be better */
 void *ioremap(phys_addr_t offset, size_t size) {
-	// return Lx::ioremap(offset, size, Genode::UNCACHED); /* TODO - evaluate if lxkit function can be ported/made usable */
-	//return _ioremap(offset, size, 0);
 	return cpsw_device->io_ds.local_addr<void>() + 0x2000;
 }
 
@@ -862,6 +875,7 @@ int platform_get_irq(struct platform_device * d, unsigned int i)
 
 int devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler, unsigned long irqflags, const char *devname, void *dev_id)
 {
+	Genode::log("Requesting IRQ: ", irq);
 	Lx::Irq::irq().request_irq(Platform::Device::create(Lx_kit::env().env(), irq), handler, dev_id);
 	//new (Lx::Malloc::mem()) Gpio_irq(Lx_kit::env().env(), irq, handler, dev);
 	return 0;
@@ -956,6 +970,7 @@ int register_netdev(struct net_device * ndev)
 
 		ndev->state |= 1 << __LINK_STATE_START;
 
+		Genode::log("register_netdev for ", ndev->name, "ndo_open next");
 		if (err = ndev ->netdev_ops->ndo_open(ndev)) {
 		     Genode::log("err is: ", err);
 				return err;
@@ -970,7 +985,7 @@ int register_netdev(struct net_device * ndev)
 		//_nic = nic;
 		//_signal->parent().announce(_signal->ep().rpc_ep().manage(&root));
 		//}
-		//Genode::log("err is: ", err);
+	Genode::log("err is: ", err);
 
 	return err;
 }
@@ -2329,6 +2344,446 @@ int get_phy_id(struct device_node *node) {
 	//Genode::log("Name: ", node->name, "Id: ", node->id);
 	return node->id;
 }
+
+/* from core/net/dev.c */
+
+#define PF_MEMALLOC	0x00000800
+
+int netdev_tstamp_prequeue __read_mostly = 1;
+
+
+#define lockless_dereference(p)								\
+({ \
+	typeof(p) _________p1 = READ_ONCE(p); \
+	smp_read_barrier_depends(); /* Dependency order vs. p above. */ \
+	(_________p1); \
+})
+
+/* there is also a static_key version */
+static inline int sk_memalloc_socks(void)
+{
+	return 0;
+}
+
+static inline void tsk_restore_flags(struct task_struct *task,
+				unsigned long orig_flags, unsigned long flags)
+{
+	task->flags &= ~flags;
+	task->flags |= orig_flags & flags;
+}
+
+inline void rcu_read_lock(void) { }
+inline void rcu_read_unlock(void) { }
+
+void might_sleep() { }
+
+bool gfpflags_allow_blocking(const gfp_t gfp_flags)
+{
+	return (bool __force)(gfp_flags & __GFP_DIRECT_RECLAIM);
+}
+
+static inline unsigned short from32to16(unsigned int x)
+{
+	/* add up 16-bit and 16-bit for 16+c bit */
+	x = (x & 0xffff) + (x >> 16);
+	/* add up carry.. */
+	x = (x & 0xffff) + (x >> 16);
+	return x;
+}
+
+__wsum csum_add(__wsum csum, __wsum addend)
+{
+	u32 res = (__force u32)csum;
+	res += (__force u32)addend;
+	return (__force __wsum)(res + (res < (__force u32)addend));
+}
+
+__wsum csum_sub(__wsum csum, __wsum addend)
+{
+	return csum_add(csum, ~addend);
+}
+
+static unsigned int do_csum(const unsigned char *buff, int len)
+{
+	int odd;
+	unsigned int result = 0;
+
+	if (len <= 0)
+		goto out;
+	odd = 1 & (unsigned long) buff;
+	if (odd) {
+		result += (*buff << 8);
+		len--;
+		buff++;
+	}
+	if (len >= 2) {
+		if (2 & (unsigned long) buff) {
+			result += *(unsigned short *) buff;
+			len -= 2;
+			buff += 2;
+		}
+		if (len >= 4) {
+			const unsigned char *end = buff + ((unsigned)len & ~3);
+			unsigned int carry = 0;
+			do {
+				unsigned int w = *(unsigned int *) buff;
+				buff += 4;
+				result += carry;
+				result += w;
+				carry = (w > result);
+			} while (buff < end);
+			result += carry;
+			result = (result & 0xffff) + (result >> 16);
+		}
+		if (len & 2) {
+			result += *(unsigned short *) buff;
+			buff += 2;
+		}
+	}
+	if (len & 1)
+		result += *buff;
+	result = from32to16(result);
+	if (odd)
+		result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
+out:
+	return result;
+}
+
+__wsum csum_partial(const void *buff, int len, __wsum wsum)
+{
+	unsigned int sum = (__force unsigned int)wsum;
+	unsigned int result = do_csum((const unsigned char *) buff, len);
+
+	/* add in old sum, and carry.. */
+	result += sum;
+	if (sum > result)
+		result += 1;
+	return (__force __wsum)result;
+}
+
+void vlan_set_encap_proto(struct sk_buff *skb,
+					struct vlan_hdr *vhdr)
+{
+	__be16 proto;
+	unsigned short *rawp;
+
+	/*
+	 * Was a VLAN packet, grab the encapsulated protocol, which the layer
+	 * three protocols care about.
+	 */
+
+	proto = vhdr->h_vlan_encapsulated_proto;
+	if (eth_proto_is_802_3(proto)) {
+		skb->protocol = proto;
+		return;
+	}
+
+	rawp = (unsigned short *)(vhdr + 1);
+	if (*rawp == 0xFFFF)
+		/*
+		 * This is a magic hack to spot IPX packets. Older Novell
+		 * breaks the protocol design and runs IPX over 802.3 without
+		 * an 802.2 LLC layer. We look for FFFF which isn't a used
+		 * 802.2 SSAP/DSAP. This won't work for fault tolerant netware
+		 * but does for the rest.
+		 */
+		skb->protocol = htons(ETH_P_802_3);
+	else
+		/*
+		 * Real 802.2 LLC
+		 */
+		skb->protocol = htons(ETH_P_802_2);
+}
+
+//#define skb_core_offsetof(TYPE, MEMBER)	((size_t)&((TYPE *)0)->MEMBER)
+//
+//#define skb_core_container_of(ptr, type, member) ({				\
+//			const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
+//	(type *)( (char *)__mptr - skb_core_offsetof(type,member) );})
+//
+//
+//#define skb_core_list_entry_rcu(ptr, type, member)							\
+//	skb_core_container_of(lockless_dereference(ptr), type, member)
+//
+//#define skb_core_list_for_each_entry_rcu(pos, head, member)						\
+//	for (pos = skb_core_list_entry_rcu((head)->next, typeof(*pos), member); \
+//		&pos->member != (head); \
+//		pos = skb_core_list_entry_rcu(pos->member.next, typeof(*pos), member))
+
+
+
+static inline int deliver_skb(struct sk_buff *skb,
+			      struct packet_type *pt_prev,
+			      struct net_device *orig_dev)
+{
+	if (unlikely(skb_orphan_frags(skb, GFP_ATOMIC)))
+		return -ENOMEM;
+	atomic_inc(&skb->users);
+	return pt_prev->func(skb, skb->dev, pt_prev, orig_dev);
+}
+
+static inline void deliver_ptype_list_skb(struct sk_buff *skb,
+					  struct packet_type **pt,
+					  struct net_device *orig_dev,
+					  __be16 type,
+					  struct list_head *ptype_list)
+{
+	struct packet_type *ptype, *pt_prev = *pt;
+
+	list_for_each_entry_rcu(ptype, ptype_list, list) {
+		if (ptype->type != type)
+			continue;
+		if (pt_prev)
+			deliver_skb(skb, pt_prev, orig_dev);
+		pt_prev = ptype;
+	}
+	*pt = pt_prev;
+}
+
+static bool skb_pfmemalloc_protocol(struct sk_buff *skb)
+{
+	switch (skb->protocol) {
+	case htons(ETH_P_ARP):
+	case htons(ETH_P_IP):
+	case htons(ETH_P_IPV6):
+	case htons(ETH_P_8021Q):
+	case htons(ETH_P_8021AD):
+		return true;
+	default:
+		return false;
+	}
+}
+
+static inline bool vlan_do_receive(struct sk_buff **skb)
+{
+	return false;
+}
+
+static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
+{
+	struct packet_type *ptype, *pt_prev;
+	rx_handler_func_t *rx_handler;
+	struct net_device *orig_dev;
+	bool deliver_exact = false;
+	int ret = NET_RX_DROP;
+	__be16 type;
+
+	// TODO	net_timestamp_check(!netdev_tstamp_prequeue, skb);
+
+	// TODO 	trace_netif_receive_skb(skb);
+
+	orig_dev = skb->dev;
+
+	skb_reset_network_header(skb);
+	if (!skb_transport_header_was_set(skb))
+		skb_reset_transport_header(skb);
+	skb_reset_mac_len(skb);
+
+	pt_prev = NULL;
+
+another_round:
+	skb->skb_iif = skb->dev->ifindex;
+
+	__this_cpu_inc(softnet_data.processed);
+
+	if (skb->protocol == cpu_to_be16(ETH_P_8021Q) ||
+	    skb->protocol == cpu_to_be16(ETH_P_8021AD)) {
+		skb = skb_vlan_untag(skb);
+		if (unlikely(!skb))
+			goto out;
+	}
+
+#ifdef CONFIG_NET_CLS_ACT
+	if (skb->tc_verd & TC_NCLS) {
+		skb->tc_verd = CLR_TC_NCLS(skb->tc_verd);
+		goto ncls;
+	}
+#endif
+
+	if (pfmemalloc)
+		goto skip_taps;
+
+	Genode::log("ptype_all: ", &ptype_all);
+
+	list_for_each_entry(ptype, &ptype_all, list) {
+		if (pt_prev)
+			ret = deliver_skb(skb, pt_prev, orig_dev);
+		pt_prev = ptype;
+	}
+
+	list_for_each_entry(ptype, &skb->dev->ptype_all, list) {
+		if (pt_prev)
+			ret = deliver_skb(skb, pt_prev, orig_dev);
+		pt_prev = ptype;
+	}
+
+skip_taps:
+#ifdef CONFIG_NET_INGRESS
+	if (static_key_false(&ingress_needed)) {
+		skb = handle_ing(skb, &pt_prev, &ret, orig_dev);
+		if (!skb)
+			goto out;
+
+		if (nf_ingress(skb, &pt_prev, &ret, orig_dev) < 0)
+			goto out;
+	}
+#endif
+#ifdef CONFIG_NET_CLS_ACT
+	skb->tc_verd = 0;
+ncls:
+#endif
+	if (pfmemalloc && !skb_pfmemalloc_protocol(skb))
+		goto drop;
+
+	if (skb_vlan_tag_present(skb)) {
+		if (pt_prev) {
+			ret = deliver_skb(skb, pt_prev, orig_dev);
+			pt_prev = NULL;
+		}
+		if (vlan_do_receive(&skb))
+			goto another_round;
+		else if (unlikely(!skb))
+			goto out;
+	}
+
+	rx_handler = rcu_dereference(skb->dev->rx_handler);
+	if (rx_handler) {
+		if (pt_prev) {
+			ret = deliver_skb(skb, pt_prev, orig_dev);
+			pt_prev = NULL;
+		}
+		switch (rx_handler(&skb)) {
+		case RX_HANDLER_CONSUMED:
+			ret = NET_RX_SUCCESS;
+			goto out;
+		case RX_HANDLER_ANOTHER:
+			goto another_round;
+		case RX_HANDLER_EXACT:
+			deliver_exact = true;
+		case RX_HANDLER_PASS:
+			break;
+		default:
+			BUG();
+		}
+	}
+
+	if (unlikely(skb_vlan_tag_present(skb))) {
+		if (skb_vlan_tag_get_id(skb))
+			skb->pkt_type = PACKET_OTHERHOST;
+		/* Note: we might in the future use prio bits
+		 * and set skb->priority like in vlan_do_receive()
+		 * For the time being, just ignore Priority Code Point
+		 */
+		skb->vlan_tci = 0;
+	}
+
+	type = skb->protocol;
+
+	/* deliver only exact match when indicated */
+	if (likely(!deliver_exact)) {
+		deliver_ptype_list_skb(skb, &pt_prev, orig_dev, type,
+				       &ptype_base[ntohs(type) &
+						   PTYPE_HASH_MASK]);
+	}
+
+	deliver_ptype_list_skb(skb, &pt_prev, orig_dev, type,
+			       &orig_dev->ptype_specific);
+
+	if (unlikely(skb->dev != orig_dev)) {
+		deliver_ptype_list_skb(skb, &pt_prev, orig_dev, type,
+				       &skb->dev->ptype_specific);
+	}
+
+	if (pt_prev) {
+		if (unlikely(skb_orphan_frags(skb, GFP_ATOMIC)))
+			goto drop;
+		else
+			ret = pt_prev->func(skb, skb->dev, pt_prev, orig_dev);
+	} else {
+drop:
+		atomic_long_inc(&skb->dev->rx_dropped);
+		kfree_skb(skb);
+		/* Jamal, now you will not able to escape explaining
+		 * me how you were going to use this. :-)
+		 */
+		ret = NET_RX_DROP;
+	}
+
+out:
+	return ret;
+}
+
+
+
+static int __netif_receive_skb(struct sk_buff *skb)
+{
+	int ret;
+
+	if (sk_memalloc_socks() && skb_pfmemalloc(skb)) {
+		unsigned long pflags = current->flags;
+
+		/*
+		 * PFMEMALLOC skbs are special, they should
+		 * - be delivered to SOCK_MEMALLOC sockets only
+		 * - stay away from userspace
+		 * - have bounded memory usage
+		 *
+		 * Use PF_MEMALLOC as this saves us from propagating the allocation
+		 * context down to all allocation sites.
+		 */
+		current->flags |= PF_MEMALLOC;
+		ret = __netif_receive_skb_core(skb, true);
+		tsk_restore_flags(current, pflags, PF_MEMALLOC);
+	} else
+		ret = __netif_receive_skb_core(skb, false);
+
+	return ret;
+}
+
+//#define net_timestamp_check(COND, SKB)			\
+//	if (static_key_false(&netstamp_needed)) {		\
+//		if ((COND) && !(SKB)->tstamp.tv64)	\
+//			__net_timestamp(SKB);		\
+//	}						\
+
+
+
+static int netif_receive_skb_internal(struct sk_buff *skb)
+{
+	int ret;
+
+	//	net_timestamp_check(netdev_tstamp_prequeue, skb);
+
+	if (skb_defer_rx_timestamp(skb))
+		return NET_RX_SUCCESS;
+
+	rcu_read_lock();
+
+#ifdef CONFIG_RPS
+	if (static_key_false(&rps_needed)) {
+		struct rps_dev_flow voidflow, *rflow = &voidflow;
+		int cpu = get_rps_cpu(skb->dev, skb, &rflow);
+
+		if (cpu >= 0) {
+			ret = enqueue_to_backlog(skb, cpu, &rflow->last_qtail);
+			rcu_read_unlock();
+			return ret;
+		}
+	}
+#endif
+	ret = __netif_receive_skb(skb);
+	rcu_read_unlock();
+	return ret;
+}
+
+int netif_receive_skb(struct sk_buff *skb)
+{
+	//trace_netif_receive_skb_entry(skb);
+
+	return netif_receive_skb_internal(skb);
+}
+
+/* from core/net/dev.c */
 // ALE
 void init_timer(struct timer_list *timer) { }
 

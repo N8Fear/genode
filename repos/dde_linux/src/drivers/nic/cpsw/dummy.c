@@ -259,11 +259,6 @@ void driver_unregister(struct device_driver *drv)
 
 
 
-//int netif_receive_skb(struct sk_buff *skb)
-//{
-//	TRACE_AND_STOP;
-//}
-
 
 void of_device_unregister(struct platform_device *ofdev)
 {
@@ -271,11 +266,6 @@ void of_device_unregister(struct platform_device *ofdev)
 }
 
 struct phy_device *of_phy_find_device(struct device_node *phy_np)
-{
-	TRACE_AND_STOP;
-}
-
-int netif_receive_skb(struct sk_buff *skb)
 {
 	TRACE_AND_STOP;
 }
