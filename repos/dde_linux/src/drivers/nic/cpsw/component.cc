@@ -59,6 +59,7 @@ void Session_component::_run_tx_task(void * args)
 
 		net_device *     ndev = data->ndev;
 		struct sk_buff * skb  = data->skb;
+		skb->dev = ndev;
 
 		ndev->netdev_ops->ndo_start_xmit(skb, ndev);
 	}

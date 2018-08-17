@@ -37,7 +37,6 @@
 #include <lx_emul/impl/timer.h>
 #include <lx_emul/impl/completion.h>
 #include <lx_kit/irq.h>
-//#include <lx_kit/mapped_io_mem_range.h>
 
 #include <drivers/defs/am335x.h>
 
@@ -1115,21 +1114,23 @@ void napi_disable(struct napi_struct *n)
 
 void __napi_schedule(struct napi_struct *n)
 {
-	Genode::log("__napi_schedule: ", n->dev->name);
-	if (cpsw_device->session0) cpsw_device->session0->unblock_rx_task(n);
+	if (Genode::strcmp(n->dev->name, "netd0") == 0)
+	  cpsw_device->session0->unblock_rx_task(n);
+	else if (Genode::strcmp(n->dev->name, "netd1") == 0)
+	  cpsw_device->session1->unblock_rx_task(n);
+	else Genode::log(__PRETTY_FUNCTION__, "Unkown device id");
+
 }
 
 
 bool napi_schedule_prep(struct napi_struct *n)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	return !test_and_set_bit(NAPI_STATE_SCHED, &n->state);
 }
 
 
 void napi_complete(struct napi_struct *n)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	clear_bit(NAPI_STATE_SCHED, &n->state);
 }
 
@@ -1178,56 +1179,9 @@ unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size,
 {
 	return _find_next_bit(addr, NULL, size, offset, ~0UL);
 }
-//unsigned long find_next_bit(const unsigned long *addr, unsigned long size, unsigned long offset)
-//{
-//	Genode::log(__PRETTY_FUNCTION__);
-//	unsigned long i  = offset / BITS_PER_LONG;
-//	offset -= (i * BITS_PER_LONG);
-//
-//	for (; offset < size; offset++)
-//		if (addr[i] & (1UL << offset))
-//			return offset + (i * BITS_PER_LONG);
-//
-//	return size;
-//}
-
-//long find_next_zero_bit_le(const void *addr,
-//                           unsigned long size, unsigned long offset)
-//{
-//	Genode::log(__PRETTY_FUNCTION__);
-//        static unsigned cnt = 0;
-//        unsigned long max_size = sizeof(long) * 8;
-//        if (offset >= max_size) {
-//					Genode::warning("Offset greater max size:", offset, " max: ", max_size, " size of long: ", sizeof(long));
-//                return offset + size;
-//        }
-//
-//        for (; offset < max_size; offset++)
-//					if (!(*(unsigned long*)addr & (1L << offset))) {
-//						Genode::log (offset, " - ", offset+size);
-//                        return offset;
-//					}
-//
-//						Genode::log (offset, " - - -  ", offset+size);
-//        return offset + size;
-//}
-
-
-
-gro_result_t napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
-{
-	Genode::log(__PRETTY_FUNCTION__, "napi device name:  ", napi->dev->name, " - need logic");
-	if (cpsw_device->session0) cpsw_device->session0->receive(skb);
-	//HVB Todo: need logic for session 1
-
-	dev_kfree_skb(skb);
-	return GRO_NORMAL;
-}
-
 
 void dma_unmap_single(struct device *dev, dma_addr_t addr, size_t size, enum dma_data_direction dir)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	// FIXME
 	TRACE;
 }
@@ -1235,7 +1189,6 @@ void dma_unmap_single(struct device *dev, dma_addr_t addr, size_t size, enum dma
 
 bool netif_queue_stopped(const struct net_device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	// FIXME
 	TRACE;
 	return 0;
@@ -1244,9 +1197,8 @@ bool netif_queue_stopped(const struct net_device *dev)
 
 struct device_node *of_parse_phandle(const struct device_node *np, const char *phandle_name, int index)
 {
-	//Genode::log(__PRETTY_FUNCTION__, "If it is successful, it returns just the node - doing the same for node:", np->name, " ", np->id, " ", np);
-	// TODO: this seems to be wrong, because the second phy cannot be loaded this way...
-	return nullptr; // there is no phy-handle property in the device tree, therrefore we return 0
+	// there is no phy-handle property in the device tree, therrefore we return 0
+	return nullptr;
 }
 
 
@@ -1255,18 +1207,14 @@ struct phy_device *of_phy_connect(struct net_device *dev,
                                   void (*hndlr)(struct net_device *),
                                   u32 flags, int iface)
 {
-	//Genode::log(__PRETTY_FUNCTION__, "phy_np name: ", phy_np->name);
 	Cpsw::Mdio::Phy * phy = (Cpsw::Mdio::Phy*) phy_np;
-	//Genode::log(__PRETTY_FUNCTION__, "phy: ", phy);
 	struct phy_device * phydev = phy ? phy->phy_dev : nullptr;
-	//Genode::log(__PRETTY_FUNCTION__, "phy dev: ", phy->phy_dev);
 
 	if (!phydev) return nullptr;
 
 	phydev->dev_flags = flags;
 	int ret = phy_connect_direct(dev, phydev, hndlr, (phy_interface_t)iface);
 
-	//Genode::log(__PRETTY_FUNCTION__, "ret value: ", ret);
 	return ret ? nullptr : phydev;
 }
 
@@ -1274,12 +1222,9 @@ struct phy_device *of_phy_connect(struct net_device *dev,
 struct device_node *of_get_child_by_name(const struct device_node *node,
                                          const char *name)
 {
-	//Genode::log(__PRETTY_FUNCTION__, "searching for: ", name);
 	if (Genode::strcmp("cpsw-phy-sel", name) == 0)
 	  return cpsw_device->mdio->phy_sel->pdev->dev.of_node;
 
-	//Cpsw * cpsw = (Cpsw*) node;
-	//return cpsw->mdio.constructed() ? (device_node*) &*cpsw->mdio : nullptr;
 	TRACE_AND_STOP;
 }
 
@@ -1287,11 +1232,9 @@ struct device_node *of_get_child_by_name(const struct device_node *node,
 static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 {
 		struct phy_device * phy =  (struct phy_device*) get_phy_device(mdio, ph.phy_reg, false);
-		//Genode::log(__PRETTY_FUNCTION__, "err status of phy( ph: ", ph.phy_reg, "/",phy, " ):", IS_ERR(phy));
 
 		if (!phy || IS_ERR(phy)) return 1;
 
-		//Genode::log(__PRETTY_FUNCTION__, " We are registering interrupt ", ph.gpio_irq, " for ", phy);
 
 		phy->irq         = ph.gpio_irq;
 		phy->dev.of_node = (device_node*) &ph;
@@ -1315,13 +1258,11 @@ static int of_mdiobus_register_phy(Cpsw::Mdio::Phy & ph, struct mii_bus *mdio)
 
 int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 {
-	//Genode::log(__PRETTY_FUNCTION__, "searching breakage");
 
 	mdio->phy_mask = ~0;
 
 	/* Clear all the IRQ properties */
 	if (mdio->irq) {
-		//Genode::log("DEBUG: interrupt in mdio bus");
 		for (unsigned i = 0; i<PHY_MAX_ADDR; i++)
 			mdio->irq[i] = PHY_POLL;
 	}
@@ -1333,7 +1274,6 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 	if (rc) return rc;
 
 	cpsw_device->mdio->for_each([&] (Cpsw::Mdio::Phy & phy) {
-										 //Genode::log("trying to register phy to mdiobus for: ", phy.phy_id);
 										 of_mdiobus_register_phy(phy, mdio);
 										 ;
 	});
@@ -1350,15 +1290,13 @@ int of_driver_match_device(struct device *dev, const struct device_driver *drv)
 }
 
 
-// HVB-Todo
 const void *of_get_property(const struct device_node *node, const char *name, int *lenp)
 {
-	//Genode::log(__PRETTY_FUNCTION__, " - requesting ", name, " from ", *node->name, "id: ", node->id); //, " with property name: ", node->properties->name);
 	if (Genode::strcmp("phy_id", name) == 0) {
 		*lenp = 2 * sizeof(u32);
 		return &cpsw_device->mdio->phys[node->id]->prop->value;
 	} else {
-		//Genode::log(__PRETTY_FUNCTION__, " getting phy_id/not implemented for node: ", node->name);
+		Genode::log(__PRETTY_FUNCTION__, " getting phy_id/not implemented for node: ", node->name);
 	}
 
 	TRACE_AND_STOP;
@@ -1376,14 +1314,12 @@ void *devm_kzalloc(struct device *dev, size_t size, gfp_t gfp)
 int request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags, const char *name, void *dev)
 {
 	new (Lx::Malloc::mem()) Gpio_irq(Lx_kit::env().env(), irq, handler, dev);
-	//Genode::log("request_irq");
 	return 0;
 }
 
 
 int enable_irq(unsigned int irq)
 {
-	//Genode::log("enable_irq");
 	for (Gpio_irq *girq = Gpio_irq::list()->first(); girq; girq = girq->next())
 		if (girq->irq_nr == irq) {
 			girq->enable();
@@ -1395,7 +1331,6 @@ int enable_irq(unsigned int irq)
 
 int disable_irq_nosync(unsigned int irq)
 {
-	//	Genode::log("disable_irq_nosync");
 	for (Gpio_irq *girq = Gpio_irq::list()->first(); girq; girq = girq->next())
 		if (girq->irq_nr == irq) {
 			girq->disable();
@@ -1446,46 +1381,38 @@ u64 timecounter_read(struct timecounter *tc)
 
 void clk_disable_unprepare(struct clk * c)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE_AND_STOP;
 }
 
 int clk_prepare_enable(struct clk * c)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
-	//	TRACE_AND_STOP;
 	return 0;
 }
 
 void device_initialize(struct device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 int device_init_wakeup(struct device *dev, bool val)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return 0;
 }
 
 struct regulator *__must_check devm_regulator_get(struct device *dev, const char *id)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return nullptr;
 }
 
-struct netdev_queue *netdev_get_tx_queue(const struct net_device *dev, unsigned int index)
-{
-	Genode::log(__PRETTY_FUNCTION__, "dev->tx: ", &dev->_tx[index], " index: ", index);
-	TRACE;
-	//return &dev->_tx[index];
-	//TODO - HVB
-	return (struct netdev_queue *) 0x6666;
-	return nullptr;
-}
+//struct netdev_queue *netdev_get_tx_queue(const struct net_device *dev, unsigned int index)
+//{
+//	Genode::log(__PRETTY_FUNCTION__, "dev->tx: ", &dev->_tx[index], " index: ", index);
+//	TRACE;
+//	return (struct netdev_queue *) 0x6666;
+//	return nullptr;
+//}
 
 void netif_stop_queue(struct net_device *dev)
 {
@@ -1495,21 +1422,18 @@ void netif_stop_queue(struct net_device *dev)
 
 bool of_phy_is_fixed_link(struct device_node *np)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return 0;
 }
 
 int pinctrl_pm_select_default_state(struct device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return -1;
 }
 
 int pinctrl_pm_select_sleep_state(struct device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return -1;
 }
@@ -1588,64 +1512,54 @@ int try_module_get(struct module *mod)
 
 struct device *get_device(struct device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return dev;
 }
 
 int device_bind_driver(struct device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return 0;
 }
 
 void netif_tx_start_all_queues(struct net_device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void netif_tx_lock_bh(struct net_device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 int  device_set_wakeup_enable(struct device *dev, bool enable)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return 0;
 }
 
 void trace_consume_skb(struct sk_buff * sb)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void trace_kfree_skb(struct sk_buff * sb, void * p)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void netif_tx_unlock_bh(struct net_device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void netif_wake_queue(struct net_device * d)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 bool netdev_uses_dsa(struct net_device *dev)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return false;
 }
@@ -1653,14 +1567,12 @@ bool netdev_uses_dsa(struct net_device *dev)
 void dma_sync_single_for_device(struct device *dev, dma_addr_t addr,
                                 size_t size, enum dma_data_direction dir)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void dma_sync_single_for_cpu(struct device *dev, dma_addr_t addr, size_t size,
                              enum dma_data_direction dir)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
@@ -1672,20 +1584,17 @@ void of_node_put(struct device_node *node)
 
 const void *of_get_mac_address(struct device_node *np)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 	return nullptr;
 }
 
 void rtnl_lock(void)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
 void rtnl_unlock(void)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
 	TRACE;
 }
 
@@ -1700,7 +1609,6 @@ int  bus_register(struct bus_type *bus)
 	TRACE;
 	return 0;
 }
-// HVB
 
 
 struct gpio_descs *__must_check
@@ -1726,52 +1634,42 @@ int of_property_read_u32(const struct device_node *np, const char *propname, u32
 	Cpsw * cpsw = (Cpsw*) np;
 
  	if (Genode::strcmp("slaves", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: slaves");
 		*out_value = 2;
 	}
 
  	else if (Genode::strcmp("active_slave", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: active_slave");
 		*out_value = 0;
 	}
 
  	else if (Genode::strcmp("cpts_clock_mult", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: clock_mult");
 		*out_value = 0x80000000;
 	}
 
  	else if (Genode::strcmp("cpts_clock_shift", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: clock_shift");
 		*out_value = 0x1d;
 	}
 
  	else if (Genode::strcmp("cpdma_channels", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: cpdma_channels");
 		*out_value = 0x8;
 	}
 
  	else if (Genode::strcmp("ale_entries", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: ale_entries");
 		*out_value = 0x400;
 	}
 
  	else if (Genode::strcmp("bd_ram_size", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: bd_ram_size");
 		*out_value = 0x2000;
 	}
 
  	else if (Genode::strcmp("rx_descs", propname) == 0) {
 		*out_value = 0x40;
-		// TODO: in the device tree the value is 0x40
 	}
 
  	else if (Genode::strcmp("mac_control", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: mac_control");
 		*out_value = 0x20;
 	}
 
  	else if (Genode::strcmp("dual_emac_res_vlan", propname) == 0) {
-		//Genode::log("of_property_read_u32: query for: dual_emac_res_vlan, for node:", np->name);
 	  if (np->id == 0) {
 		  *out_value = 1;
 	  } else if (np->id == 1) {
@@ -1784,41 +1682,27 @@ int of_property_read_u32(const struct device_node *np, const char *propname, u32
 
  	else if (Genode::strcmp("bus_freq", propname) == 0) {
 	  if (Genode::strcmp(np->name, "mdio") == 0) {
-		  //Genode::log("of_property_read_u32: in bus_freq mdio branch ");
 		  *out_value = 0xf4240;
 		} else {
 		  Genode::log("of_property_read_u32: in bus_freq else branch else: " , np->name);
 		  *out_value = 0xf4240;
-	    //*out_value = 1000000;
 			TRACE_AND_STOP;
 		}
 	}
 
  	else if (Genode::strcmp("reg", propname) == 0) {
-		Genode::log("of_property_read_u32: reg for node " , cpsw->name);
-		// if (Genode::strcmp(cpsw->name.string(), "mdio") == 0) {
-		//	  Genode::log("of_property_read_u32: in reg mdio branch ");
-		//	  *out_value = 0x4a101000; // Adress of MDIO, in dt there is <0x4a101000 0x100> is the 0x100 the size?
-		//	} else {
-		Genode::log("of_property_read_u32: in reg else branch - which reg is asked for here?" , cpsw->name);
 		TRACE_AND_STOP;
-		//}
-
 	}
 
  	else if (Genode::strcmp("max-speed", propname) == 0) {
-		/* Not in the device tree file */
-		//Genode::log("of_property_read_u32: query for: max_speed");
 		TRACE;
 	}
 
  	else if (Genode::strcmp("big_endian", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: big_endian");
 		TRACE_AND_STOP;
 	}
 
  	else if (Genode::strcmp("little_endian", propname) == 0) {
-		//		Genode::log("of_property_read_u32: query for: little_endian");
 		TRACE_AND_STOP;
 	}
  	else {
@@ -1835,7 +1719,6 @@ bool of_property_read_bool(const struct device_node *np,
 	Cpsw * cpsw = (Cpsw*) np;
 
  	if (Genode::strcmp("dual_emac", propname) == 0) {
-		//		Genode::log("of_property_read_bool: query for: dual_emac");
 		return true;
 	}
 
@@ -1856,39 +1739,29 @@ int of_platform_populate(struct device_node *root,
 struct device_node *of_get_next_child(const struct device_node *node,
 					     struct device_node *prev)
 {
-	//Genode::log("In of_get_next child, node: ",node," - prev: ", prev);
 	Cpsw * cpsw = (Cpsw*) node;
-	// TODO hvb - most likely extend/modify struct
 	if (prev == (struct device_node*) 0xffffffff) return nullptr;
 	return prev ? prev->sibling : node->child;
-	//return cpsw->mdio.constructed() ? (device_node*) &*cpsw->mdio->phys[0] : nullptr;
 }
 
 int strcmp(const char *s1, const char *s2) {
-	//Genode::log(__PRETTY_FUNCTION__, "Comparing ",s1, " against ", s2);
 	// called in cpsw.c by "if(strcmp(slave_node->name, "slave")) return warning about no slave nodes)
 	return Genode::strcmp(s1, s2);
-	TRACE_AND_STOP;
-	return 0;
 }
 
 /* Returns positive integer if machine is compatible */
 int of_machine_is_compatible(const char *compat)
 {
  	if (Genode::strcmp("ti,am33xx", compat) == 0) {
-		// Genode::log("of_device_is_compatible check: ti,33xx compatible");
 		return 42;
 	}
  	else if (Genode::strcmp("ti,am4372", compat) == 0) {
-		//		Genode::log("of_device_is_compatible check: ti,am4372 not compatible");
 		return 0;
 	}
  	else if (Genode::strcmp("ti,dm8148", compat) == 0) {
-		//Genode::log("of_device_is_compatible check: ti,dm8148 not compatible");
 		return 0;
 	}
  	else if (Genode::strcmp("ti,dra7", compat) == 0) {
-		//Genode::log("of_device_is_compatible check: ti,dra7 not compatible");
 		return 0;
 	}
 	else
@@ -1959,10 +1832,10 @@ void free_netdev(struct net_device * d)
 
 bool ether_addr_equal(const u8 *addr1, const u8 *addr2)
 {
-	//Genode::log(__PRETTY_FUNCTION__);
-	TRACE;
-	//HVB: TODO
-	return true;
+  const u16 *a = (const u16 *)addr1;
+	const u16 *b = (const u16 *)addr2;
+
+	return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2])) == 0;
 }
 
 /**
@@ -2057,16 +1930,13 @@ void bitmap_clear(unsigned long *map, unsigned int start, int len)
 
 struct device_node *of_find_node_by_phandle(phandle handle)
 {
-	//Genode::log(__PRETTY_FUNCTION__, " phandle:", handle);
 	/* Returning pointer to mdio's device node */
 	return (device_node*) &cpsw_device->mdio;
-	//return (device_node*) cpsw_device->mdio->mdio_dn;
 }
 
 struct platform_device *of_find_device_by_node(struct device_node *np)
 {
 	Cpsw * cpsw = (Cpsw*) &cpsw_device;
-	//Genode::log(__PRETTY_FUNCTION__, " np: ", np);
 
 	return cpsw->mdio->pdev;
 }
@@ -2078,7 +1948,6 @@ void *devres_alloc(dr_release_t release, size_t size, gfp_t gfp)
 	struct mii_bus * mb = (struct mii_bus*) Lx::Malloc::dma().alloc(size);
   TRACE;
   cpsw->mdio->mii_bus = mb;
-	//Genode::log(__PRETTY_FUNCTION__, " - returning: ", &cpsw->mdio->mii_bus);
 	return &cpsw->mdio->mii_bus;
 }
 
@@ -2091,13 +1960,11 @@ void devres_add(struct device *dev, void *res)
 int of_get_child_count(const struct device_node *np)
 {
 	struct device_node *child;
-	//Genode::log(__PRETTY_FUNCTION__, " name of node: ", np->name);
 	int num = 0;
 
 	for_each_child_of_node(np, child)
 		num++;
 
-	//Genode::log(__PRETTY_FUNCTION__, " returning num: ", num);
 	return num;
 }
 
@@ -2131,7 +1998,6 @@ struct property *of_find_property(const struct device_node *np,
 	if (Genode::strcmp(name, "smsc,disable-energy-detect") == 0)
 		return (struct property *) 0x1;
 
-	//Genode::log(__PRETTY_FUNCTION__, " searched for: ", name);
 
 	TRACE_AND_STOP;
 }
@@ -2218,10 +2084,6 @@ int get_phy_id(struct device_node *node) {
 	return node->id;
 }
 
-/* from core/net/dev.c */
-
-
-int netdev_tstamp_prequeue __read_mostly = 1;
 
 
 int netif_receive_skb(struct sk_buff *skb)
@@ -2229,14 +2091,17 @@ int netif_receive_skb(struct sk_buff *skb)
 	/* Should not be needed except for tracing
 	trace_netif_receive_skb_entry(skb);
 	*/
-  Cpsw * cpsw = (Cpsw*) skb->dev->dev.of_node;
-  if (cpsw->session0) cpsw->session0->receive(skb);
+	if (Genode::strcmp(skb->dev->name, "netd0") == 0)
+    cpsw_device->session0->receive(skb);
+	else if (Genode::strcmp(skb->dev->name, "netd1") == 0)
+    cpsw_device->session1->receive(skb);
+	else Genode::log(__PRETTY_FUNCTION__, "Unkown device id");
+
 
   dev_kfree_skb(skb);
   return NET_RX_SUCCESS;
 }
 
-/* from core/net/dev.c */
 // ALE
 void init_timer(struct timer_list *timer) { }
 

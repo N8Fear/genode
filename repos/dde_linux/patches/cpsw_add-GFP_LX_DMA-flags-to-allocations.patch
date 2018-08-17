@@ -1,5 +1,15 @@
+From 5d90f4ee70b6d722ef8978743b4c7740600b37a3 Mon Sep 17 00:00:00 2001
+From: Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
+Date: Fri, 17 Aug 2018 18:37:13 +0200
+Subject: [PATCH 2/2] cpsw: GFP_LX_DMA
+
+---
+ drivers/net/ethernet/ti/cpsw.c |  2 +-
+ net/core/skbuff.c              | 50 +++++++++++++++++-----------------
+ 2 files changed, 26 insertions(+), 26 deletions(-)
+
 diff --git a/drivers/net/ethernet/ti/cpsw.c b/drivers/net/ethernet/ti/cpsw.c
-index fc95806..a918c27 100644
+index 64c1f68..363663b 100644
 --- a/drivers/net/ethernet/ti/cpsw.c
 +++ b/drivers/net/ethernet/ti/cpsw.c
 @@ -1313,7 +1313,7 @@ static int cpsw_ndo_open(struct net_device *ndev)
@@ -11,54 +21,213 @@ index fc95806..a918c27 100644
  			if (!skb)
  				goto err_cleanup;
  			ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
-diff --git a/drivers/net/ethernet/ti/davinci_cpdma.c b/drivers/net/ethernet/ti/davinci_cpdma.c
-index 657b65b..b616c22 100644
---- a/drivers/net/ethernet/ti/davinci_cpdma.c
-+++ b/drivers/net/ethernet/ti/davinci_cpdma.c
-@@ -158,7 +158,7 @@ cpdma_desc_pool_create(struct device *dev, u32 phys, u32 hw_addr,
- 	int bitmap_size;
- 	struct cpdma_desc_pool *pool;
+diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+index 02c065f..a1f7bfd 100644
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -304,7 +304,7 @@ struct sk_buff *__build_skb(void *data, unsigned int frag_size)
+ 	struct sk_buff *skb;
+ 	unsigned int size = frag_size ? : ksize(data);
  
--	pool = devm_kzalloc(dev, sizeof(*pool), GFP_KERNEL);
-+	pool = devm_kzalloc(dev, sizeof(*pool), GFP_KERNEL | GFP_LX_DMA);
- 	if (!pool)
- 		goto fail;
+-	skb = kmem_cache_alloc(skbuff_head_cache, GFP_ATOMIC);
++	skb = kmem_cache_alloc(skbuff_head_cache, GFP_ATOMIC | GFP_LX_DMA);
+ 	if (!skb)
+ 		return NULL;
  
-@@ -170,7 +170,7 @@ cpdma_desc_pool_create(struct device *dev, u32 phys, u32 hw_addr,
- 	pool->num_desc	= size / pool->desc_size;
- 
- 	bitmap_size  = (pool->num_desc / BITS_PER_LONG) * sizeof(long);
--	pool->bitmap = devm_kzalloc(dev, bitmap_size, GFP_KERNEL);
-+	pool->bitmap = devm_kzalloc(dev, bitmap_size, GFP_KERNEL | GFP_LX_DMA);
- 	if (!pool->bitmap)
- 		goto fail;
- 
-@@ -180,7 +180,7 @@ cpdma_desc_pool_create(struct device *dev, u32 phys, u32 hw_addr,
- 		pool->hw_addr = hw_addr;
- 	} else {
- 		pool->cpumap = dma_alloc_coherent(dev, size, &pool->phys,
--						  GFP_KERNEL);
-+						  GFP_KERNEL | GFP_LX_DMA);
- 		pool->iomap = pool->cpumap;
- 		pool->hw_addr = pool->phys;
- 	}
-@@ -267,7 +267,7 @@ struct cpdma_ctlr *cpdma_ctlr_create(struct cpdma_params *params)
+@@ -372,7 +372,7 @@ static void *__netdev_alloc_frag(unsigned int fragsz, gfp_t gfp_mask)
+  */
+ void *netdev_alloc_frag(unsigned int fragsz)
  {
- 	struct cpdma_ctlr *ctlr;
+-	return __netdev_alloc_frag(fragsz, GFP_ATOMIC | __GFP_COLD);
++	return __netdev_alloc_frag(fragsz, GFP_ATOMIC | GFP_LX_DMA | __GFP_COLD);
+ }
+ EXPORT_SYMBOL(netdev_alloc_frag);
  
--	ctlr = devm_kzalloc(params->dev, sizeof(*ctlr), GFP_KERNEL);
-+	ctlr = devm_kzalloc(params->dev, sizeof(*ctlr), GFP_KERNEL | GFP_LX_DMA);
- 	if (!ctlr)
+@@ -385,7 +385,7 @@ static void *__napi_alloc_frag(unsigned int fragsz, gfp_t gfp_mask)
+ 
+ void *napi_alloc_frag(unsigned int fragsz)
+ {
+-	return __napi_alloc_frag(fragsz, GFP_ATOMIC | __GFP_COLD);
++	return __napi_alloc_frag(fragsz, GFP_ATOMIC | GFP_LX_DMA | __GFP_COLD);
+ }
+ EXPORT_SYMBOL(napi_alloc_frag);
+ 
+@@ -1199,11 +1199,11 @@ struct sk_buff *skb_realloc_headroom(struct sk_buff *skb, unsigned int headroom)
+ 	int delta = headroom - skb_headroom(skb);
+ 
+ 	if (delta <= 0)
+-		skb2 = pskb_copy(skb, GFP_ATOMIC);
++		skb2 = pskb_copy(skb, GFP_ATOMIC | GFP_LX_DMA);
+ 	else {
+-		skb2 = skb_clone(skb, GFP_ATOMIC);
++		skb2 = skb_clone(skb, GFP_ATOMIC | GFP_LX_DMA);
+ 		if (skb2 && pskb_expand_head(skb2, SKB_DATA_ALIGN(delta), 0,
+-					     GFP_ATOMIC)) {
++					     GFP_ATOMIC | GFP_LX_DMA)) {
+ 			kfree_skb(skb2);
+ 			skb2 = NULL;
+ 		}
+@@ -1296,7 +1296,7 @@ int skb_pad(struct sk_buff *skb, int pad)
+ 
+ 	ntail = skb->data_len + pad - (skb->end - skb->tail);
+ 	if (likely(skb_cloned(skb) || ntail > 0)) {
+-		err = pskb_expand_head(skb, 0, ntail, GFP_ATOMIC);
++		err = pskb_expand_head(skb, 0, ntail, GFP_ATOMIC | GFP_LX_DMA);
+ 		if (unlikely(err))
+ 			goto free_skb;
+ 	}
+@@ -1425,7 +1425,7 @@ int ___pskb_trim(struct sk_buff *skb, unsigned int len)
+ 	int err;
+ 
+ 	if (skb_cloned(skb) &&
+-	    unlikely((err = pskb_expand_head(skb, 0, 0, GFP_ATOMIC))))
++	    unlikely((err = pskb_expand_head(skb, 0, 0, GFP_ATOMIC | GFP_LX_DMA))))
+ 		return err;
+ 
+ 	i = 0;
+@@ -1460,7 +1460,7 @@ drop_pages:
+ 		if (skb_shared(frag)) {
+ 			struct sk_buff *nfrag;
+ 
+-			nfrag = skb_clone(frag, GFP_ATOMIC);
++			nfrag = skb_clone(frag, GFP_ATOMIC | GFP_LX_DMA);
+ 			if (unlikely(!nfrag))
+ 				return -ENOMEM;
+ 
+@@ -1533,7 +1533,7 @@ unsigned char *__pskb_pull_tail(struct sk_buff *skb, int delta)
+ 
+ 	if (eat > 0 || skb_cloned(skb)) {
+ 		if (pskb_expand_head(skb, 0, eat > 0 ? eat + 128 : 0,
+-				     GFP_ATOMIC))
++				     GFP_ATOMIC | GFP_LX_DMA))
+ 			return NULL;
+ 	}
+ 
+@@ -1581,7 +1581,7 @@ unsigned char *__pskb_pull_tail(struct sk_buff *skb, int delta)
+ 
+ 				if (skb_shared(list)) {
+ 					/* Sucks! We need to fork list. :-( */
+-					clone = skb_clone(list, GFP_ATOMIC);
++					clone = skb_clone(list, GFP_ATOMIC | GFP_LX_DMA);
+ 					if (!clone)
+ 						return NULL;
+ 					insp = list->next;
+@@ -2269,7 +2269,7 @@ skb_zerocopy(struct sk_buff *to, struct sk_buff *from, int len, int hlen)
+ 	to->len += len + plen;
+ 	to->data_len += len + plen;
+ 
+-	if (unlikely(skb_orphan_frags(from, GFP_ATOMIC))) {
++	if (unlikely(skb_orphan_frags(from, GFP_ATOMIC | GFP_LX_DMA))) {
+ 		skb_tx_error(from);
+ 		return -ENOMEM;
+ 	}
+@@ -2563,7 +2563,7 @@ EXPORT_SYMBOL(skb_split);
+  */
+ static int skb_prepare_for_shift(struct sk_buff *skb)
+ {
+-	return skb_cloned(skb) && pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
++	return skb_cloned(skb) && pskb_expand_head(skb, 0, 0, GFP_ATOMIC | GFP_LX_DMA);
+ }
+ 
+ /**
+@@ -3048,7 +3048,7 @@ struct sk_buff *skb_segment(struct sk_buff *head_skb,
+ 				frag++;
+ 			}
+ 
+-			nskb = skb_clone(list_skb, GFP_ATOMIC);
++			nskb = skb_clone(list_skb, GFP_ATOMIC | GFP_LX_DMA);
+ 			list_skb = list_skb->next;
+ 
+ 			if (unlikely(!nskb))
+@@ -3070,7 +3070,7 @@ struct sk_buff *skb_segment(struct sk_buff *head_skb,
+ 			__skb_push(nskb, doffset);
+ 		} else {
+ 			nskb = __alloc_skb(hsize + doffset + headroom,
+-					   GFP_ATOMIC, skb_alloc_rx_flag(head_skb),
++					   GFP_ATOMIC | GFP_LX_DMA, skb_alloc_rx_flag(head_skb),
+ 					   NUMA_NO_NODE);
+ 
+ 			if (unlikely(!nskb))
+@@ -3138,7 +3138,7 @@ struct sk_buff *skb_segment(struct sk_buff *head_skb,
+ 				goto err;
+ 			}
+ 
+-			if (unlikely(skb_orphan_frags(frag_skb, GFP_ATOMIC)))
++			if (unlikely(skb_orphan_frags(frag_skb, GFP_ATOMIC | GFP_LX_DMA)))
+ 				goto err;
+ 
+ 			*nskb_frag = *frag;
+@@ -3472,7 +3472,7 @@ int skb_cow_data(struct sk_buff *skb, int tailbits, struct sk_buff **trailer)
+ 		 * space, 128 bytes is fair. */
+ 
+ 		if (skb_tailroom(skb) < tailbits &&
+-		    pskb_expand_head(skb, 0, tailbits-skb_tailroom(skb)+128, GFP_ATOMIC))
++		    pskb_expand_head(skb, 0, tailbits-skb_tailroom(skb)+128, GFP_ATOMIC | GFP_LX_DMA))
+ 			return -ENOMEM;
+ 
+ 		/* Voila! */
+@@ -3514,12 +3514,12 @@ int skb_cow_data(struct sk_buff *skb, int tailbits, struct sk_buff **trailer)
+ 
+ 			/* Fuck, we are miserable poor guys... */
+ 			if (ntail == 0)
+-				skb2 = skb_copy(skb1, GFP_ATOMIC);
++				skb2 = skb_copy(skb1, GFP_ATOMIC | GFP_LX_DMA);
+ 			else
+ 				skb2 = skb_copy_expand(skb1,
+ 						       skb_headroom(skb1),
+ 						       ntail,
+-						       GFP_ATOMIC);
++						       GFP_ATOMIC | GFP_LX_DMA);
+ 			if (unlikely(skb2 == NULL))
+ 				return -ENOMEM;
+ 
+@@ -3616,7 +3616,7 @@ struct sk_buff *skb_clone_sk(struct sk_buff *skb)
+ 	if (!sk || !atomic_inc_not_zero(&sk->sk_refcnt))
  		return NULL;
  
-@@ -501,7 +501,7 @@ struct cpdma_chan *cpdma_chan_create(struct cpdma_ctlr *ctlr, int chan_num,
- 	if (__chan_linear(chan_num) >= ctlr->num_chan)
+-	clone = skb_clone(skb, GFP_ATOMIC);
++	clone = skb_clone(skb, GFP_ATOMIC | GFP_LX_DMA);
+ 	if (!clone) {
+ 		sock_put(sk);
+ 		return NULL;
+@@ -3701,9 +3701,9 @@ void __skb_tstamp_tx(struct sk_buff *orig_skb,
+ 		return;
+ 
+ 	if (tsonly)
+-		skb = alloc_skb(0, GFP_ATOMIC);
++		skb = alloc_skb(0, GFP_ATOMIC | GFP_LX_DMA);
+ 	else
+-		skb = skb_clone(orig_skb, GFP_ATOMIC);
++		skb = skb_clone(orig_skb, GFP_ATOMIC | GFP_LX_DMA);
+ 	if (!skb)
+ 		return;
+ 
+@@ -4039,7 +4039,7 @@ static struct sk_buff *skb_checksum_maybe_trim(struct sk_buff *skb,
+ 	else if (skb->len == len)
+ 		return skb;
+ 
+-	skb_chk = skb_clone(skb, GFP_ATOMIC);
++	skb_chk = skb_clone(skb, GFP_ATOMIC | GFP_LX_DMA);
+ 	if (!skb_chk)
  		return NULL;
  
--	chan = devm_kzalloc(ctlr->dev, sizeof(*chan), GFP_KERNEL);
-+	chan = devm_kzalloc(ctlr->dev, sizeof(*chan), GFP_KERNEL | GFP_LX_DMA);
- 	if (!chan)
- 		return ERR_PTR(-ENOMEM);
+@@ -4285,7 +4285,7 @@ struct sk_buff *skb_vlan_untag(struct sk_buff *skb)
+ 		return skb;
+ 	}
+ 
+-	skb = skb_share_check(skb, GFP_ATOMIC);
++	skb = skb_share_check(skb, GFP_ATOMIC | GFP_LX_DMA);
+ 	if (unlikely(!skb))
+ 		goto err_free;
+ 
+@@ -4323,7 +4323,7 @@ int skb_ensure_writable(struct sk_buff *skb, int write_len)
+ 	if (!skb_cloned(skb) || skb_clone_writable(skb, write_len))
+ 		return 0;
+ 
+-	return pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
++	return pskb_expand_head(skb, 0, 0, GFP_ATOMIC | GFP_LX_DMA);
+ }
+ EXPORT_SYMBOL(skb_ensure_writable);
  
 -- 
 2.18.0

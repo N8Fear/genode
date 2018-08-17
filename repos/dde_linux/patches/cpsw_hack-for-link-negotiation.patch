@@ -1,0 +1,30 @@
+From 5c0aca0658cb155ffa9394b819b9466c226a9d03 Mon Sep 17 00:00:00 2001
+From: Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
+Date: Fri, 17 Aug 2018 18:36:42 +0200
+Subject: [PATCH 1/2] cpsw: hack for link negotiation
+
+---
+ drivers/net/phy/phy_device.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
+index 0bfbaba..e55589b 100644
+--- a/drivers/net/phy/phy_device.c
++++ b/drivers/net/phy/phy_device.c
+@@ -828,7 +828,12 @@ static int genphy_config_advert(struct phy_device *phydev)
+ 		return adv;
+ 
+ 	oldadv = adv;
+-	adv &= ~(ADVERTISE_ALL | ADVERTISE_100BASE4 | ADVERTISE_PAUSE_CAP |
++	/*
++	 * Original:
++	 * adv &= ~(ADVERTISE_ALL | ADVERTISE_100BASE4 | ADVERTISE_PAUSE_CAP |
++	 * No idea why, but without it link negotiation doesn't work
++	 */
++	adv &= ~(ADVERTISE_100BASE4 | ADVERTISE_PAUSE_CAP |
+ 		 ADVERTISE_PAUSE_ASYM);
+ 	adv |= ethtool_adv_to_mii_adv_t(advertise);
+ 
+-- 
+2.18.0
+

@@ -622,6 +622,7 @@ struct net_device
 	u16                          gso_max_segs;
 	struct phy_device           *phydev;
 	//HVB:
+	char                         id;
   rx_handler_func_t __rcu	*rx_handler;
   atomic_long_t		rx_dropped;
 	atomic_long_t		tx_dropped;
@@ -1695,11 +1696,11 @@ static inline bool is_multicast_ether_addr_64bits(const u8 addr[6+2])
 	return is_multicast_ether_addr(addr);
 }
 
+bool ether_addr_equal(const u8 *addr1, const u8 *addr2);
+
 static inline bool ether_addr_equal_64bits(const u8 addr1[6+2], const u8 addr2[6+2])
 {
-	u64 fold = (*(const u64 *)addr1) ^ (*(const u64 *)addr2);
-
-	return (fold << 16) == 0;
+  return ether_addr_equal(addr1, addr2);
 }
 
 static inline bool eth_proto_is_802_3(__be16 proto)

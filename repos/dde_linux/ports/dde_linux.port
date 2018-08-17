@@ -178,5 +178,6 @@ PATCH_OPT(patches/cpsw_tv64.patch) := -p1 -d$(SRC_DIR_CPSW)
 PATCH_OPT(patches/cpsw_fix-ale-offset.patch) := -p1 -d$(SRC_DIR_CPSW)
 PATCH_OPT(patches/cpsw_add-GFP_LX_DMA-flags-to-allocations.patch) := -p1 -d$(SRC_DIR_CPSW)
 PATCH_OPT(patches/cpsw_physid-exchange-be32_to_cpup-logic.patch) := -p1 -d$(SRC_DIR_CPSW)
+PATCH_OPT(patches/cpsw_hack-for-link-negotiation.patch) := -p1 -d$(SRC_DIR_CPSW)
 
 # vi: set ft=make :
