@@ -424,8 +424,6 @@ net_device * Session_component::_register_session_component(Session_component & 
 extern "C" {
 
 
-struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
-struct list_head ptype_all __read_mostly;	/* Taps */
 
 void lx_backtrace() { Genode::backtrace(); }
 
@@ -550,12 +548,6 @@ int platform_driver_register(struct platform_driver * drv)
 		pd_phy0->dev.of_node->properties = prop0;
 		pd_phy1->dev.of_node->properties = prop1;
 
-
-		/* Required for netif_receive_skb */
-		ptype_all = LIST_HEAD_INIT(ptype_all);
-		for (int i = 0; i < PTYPE_HASH_SIZE; i++) {
-			ptype_base[i] = LIST_HEAD_INIT(ptype_base[i]);
-		}
 	}
 
 	/* starting the driver itself */
@@ -944,6 +936,8 @@ int register_netdev(struct net_device * ndev)
 	bool marker = false;
 	int err = -ENODEV;
 
+	ndev->stats.tx_packets = 0;
+	ndev->stats.tx_bytes = 0;
 	//Nic_device *nic = Nic_device::add(ndev);
 	//Cpsw * cpsw = (Cpsw*) ndev->dev.of_node;
 	//Genode::log("register_netdev: device: ", ndev->name);
@@ -952,6 +946,7 @@ int register_netdev(struct net_device * ndev)
 		//Genode::log("devname before: ", ndev->name);
 	  cpsw_device->net_dev0 = ndev;
 	  cpsw_device->net_dev0->name = "netd0";
+
 		//Genode::log("devname after: ", ndev->name, cpsw_device->net_dev0->name);
 	} else if (!cpsw_device->net_dev1) {
 	  cpsw_device->net_dev1 = ndev;
@@ -1510,7 +1505,7 @@ int request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags, co
 
 int enable_irq(unsigned int irq)
 {
-	Genode::log("enable_irq");
+	//Genode::log("enable_irq");
 	for (Gpio_irq *girq = Gpio_irq::list()->first(); girq; girq = girq->next())
 		if (girq->irq_nr == irq) {
 			girq->enable();
@@ -2347,440 +2342,20 @@ int get_phy_id(struct device_node *node) {
 
 /* from core/net/dev.c */
 
-#define PF_MEMALLOC	0x00000800
 
 int netdev_tstamp_prequeue __read_mostly = 1;
 
 
-#define lockless_dereference(p)								\
-({ \
-	typeof(p) _________p1 = READ_ONCE(p); \
-	smp_read_barrier_depends(); /* Dependency order vs. p above. */ \
-	(_________p1); \
-})
-
-/* there is also a static_key version */
-static inline int sk_memalloc_socks(void)
-{
-	return 0;
-}
-
-static inline void tsk_restore_flags(struct task_struct *task,
-				unsigned long orig_flags, unsigned long flags)
-{
-	task->flags &= ~flags;
-	task->flags |= orig_flags & flags;
-}
-
-inline void rcu_read_lock(void) { }
-inline void rcu_read_unlock(void) { }
-
-void might_sleep() { }
-
-bool gfpflags_allow_blocking(const gfp_t gfp_flags)
-{
-	return (bool __force)(gfp_flags & __GFP_DIRECT_RECLAIM);
-}
-
-static inline unsigned short from32to16(unsigned int x)
-{
-	/* add up 16-bit and 16-bit for 16+c bit */
-	x = (x & 0xffff) + (x >> 16);
-	/* add up carry.. */
-	x = (x & 0xffff) + (x >> 16);
-	return x;
-}
-
-__wsum csum_add(__wsum csum, __wsum addend)
-{
-	u32 res = (__force u32)csum;
-	res += (__force u32)addend;
-	return (__force __wsum)(res + (res < (__force u32)addend));
-}
-
-__wsum csum_sub(__wsum csum, __wsum addend)
-{
-	return csum_add(csum, ~addend);
-}
-
-static unsigned int do_csum(const unsigned char *buff, int len)
-{
-	int odd;
-	unsigned int result = 0;
-
-	if (len <= 0)
-		goto out;
-	odd = 1 & (unsigned long) buff;
-	if (odd) {
-		result += (*buff << 8);
-		len--;
-		buff++;
-	}
-	if (len >= 2) {
-		if (2 & (unsigned long) buff) {
-			result += *(unsigned short *) buff;
-			len -= 2;
-			buff += 2;
-		}
-		if (len >= 4) {
-			const unsigned char *end = buff + ((unsigned)len & ~3);
-			unsigned int carry = 0;
-			do {
-				unsigned int w = *(unsigned int *) buff;
-				buff += 4;
-				result += carry;
-				result += w;
-				carry = (w > result);
-			} while (buff < end);
-			result += carry;
-			result = (result & 0xffff) + (result >> 16);
-		}
-		if (len & 2) {
-			result += *(unsigned short *) buff;
-			buff += 2;
-		}
-	}
-	if (len & 1)
-		result += *buff;
-	result = from32to16(result);
-	if (odd)
-		result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
-out:
-	return result;
-}
-
-__wsum csum_partial(const void *buff, int len, __wsum wsum)
-{
-	unsigned int sum = (__force unsigned int)wsum;
-	unsigned int result = do_csum((const unsigned char *) buff, len);
-
-	/* add in old sum, and carry.. */
-	result += sum;
-	if (sum > result)
-		result += 1;
-	return (__force __wsum)result;
-}
-
-void vlan_set_encap_proto(struct sk_buff *skb,
-					struct vlan_hdr *vhdr)
-{
-	__be16 proto;
-	unsigned short *rawp;
-
-	/*
-	 * Was a VLAN packet, grab the encapsulated protocol, which the layer
-	 * three protocols care about.
-	 */
-
-	proto = vhdr->h_vlan_encapsulated_proto;
-	if (eth_proto_is_802_3(proto)) {
-		skb->protocol = proto;
-		return;
-	}
-
-	rawp = (unsigned short *)(vhdr + 1);
-	if (*rawp == 0xFFFF)
-		/*
-		 * This is a magic hack to spot IPX packets. Older Novell
-		 * breaks the protocol design and runs IPX over 802.3 without
-		 * an 802.2 LLC layer. We look for FFFF which isn't a used
-		 * 802.2 SSAP/DSAP. This won't work for fault tolerant netware
-		 * but does for the rest.
-		 */
-		skb->protocol = htons(ETH_P_802_3);
-	else
-		/*
-		 * Real 802.2 LLC
-		 */
-		skb->protocol = htons(ETH_P_802_2);
-}
-
-//#define skb_core_offsetof(TYPE, MEMBER)	((size_t)&((TYPE *)0)->MEMBER)
-//
-//#define skb_core_container_of(ptr, type, member) ({				\
-//			const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
-//	(type *)( (char *)__mptr - skb_core_offsetof(type,member) );})
-//
-//
-//#define skb_core_list_entry_rcu(ptr, type, member)							\
-//	skb_core_container_of(lockless_dereference(ptr), type, member)
-//
-//#define skb_core_list_for_each_entry_rcu(pos, head, member)						\
-//	for (pos = skb_core_list_entry_rcu((head)->next, typeof(*pos), member); \
-//		&pos->member != (head); \
-//		pos = skb_core_list_entry_rcu(pos->member.next, typeof(*pos), member))
-
-
-
-static inline int deliver_skb(struct sk_buff *skb,
-			      struct packet_type *pt_prev,
-			      struct net_device *orig_dev)
-{
-	if (unlikely(skb_orphan_frags(skb, GFP_ATOMIC)))
-		return -ENOMEM;
-	atomic_inc(&skb->users);
-	return pt_prev->func(skb, skb->dev, pt_prev, orig_dev);
-}
-
-static inline void deliver_ptype_list_skb(struct sk_buff *skb,
-					  struct packet_type **pt,
-					  struct net_device *orig_dev,
-					  __be16 type,
-					  struct list_head *ptype_list)
-{
-	struct packet_type *ptype, *pt_prev = *pt;
-
-	list_for_each_entry_rcu(ptype, ptype_list, list) {
-		if (ptype->type != type)
-			continue;
-		if (pt_prev)
-			deliver_skb(skb, pt_prev, orig_dev);
-		pt_prev = ptype;
-	}
-	*pt = pt_prev;
-}
-
-static bool skb_pfmemalloc_protocol(struct sk_buff *skb)
-{
-	switch (skb->protocol) {
-	case htons(ETH_P_ARP):
-	case htons(ETH_P_IP):
-	case htons(ETH_P_IPV6):
-	case htons(ETH_P_8021Q):
-	case htons(ETH_P_8021AD):
-		return true;
-	default:
-		return false;
-	}
-}
-
-static inline bool vlan_do_receive(struct sk_buff **skb)
-{
-	return false;
-}
-
-static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
-{
-	struct packet_type *ptype, *pt_prev;
-	rx_handler_func_t *rx_handler;
-	struct net_device *orig_dev;
-	bool deliver_exact = false;
-	int ret = NET_RX_DROP;
-	__be16 type;
-
-	// TODO	net_timestamp_check(!netdev_tstamp_prequeue, skb);
-
-	// TODO 	trace_netif_receive_skb(skb);
-
-	orig_dev = skb->dev;
-
-	skb_reset_network_header(skb);
-	if (!skb_transport_header_was_set(skb))
-		skb_reset_transport_header(skb);
-	skb_reset_mac_len(skb);
-
-	pt_prev = NULL;
-
-another_round:
-	skb->skb_iif = skb->dev->ifindex;
-
-	__this_cpu_inc(softnet_data.processed);
-
-	if (skb->protocol == cpu_to_be16(ETH_P_8021Q) ||
-	    skb->protocol == cpu_to_be16(ETH_P_8021AD)) {
-		skb = skb_vlan_untag(skb);
-		if (unlikely(!skb))
-			goto out;
-	}
-
-#ifdef CONFIG_NET_CLS_ACT
-	if (skb->tc_verd & TC_NCLS) {
-		skb->tc_verd = CLR_TC_NCLS(skb->tc_verd);
-		goto ncls;
-	}
-#endif
-
-	if (pfmemalloc)
-		goto skip_taps;
-
-	Genode::log("ptype_all: ", &ptype_all);
-
-	list_for_each_entry(ptype, &ptype_all, list) {
-		if (pt_prev)
-			ret = deliver_skb(skb, pt_prev, orig_dev);
-		pt_prev = ptype;
-	}
-
-	list_for_each_entry(ptype, &skb->dev->ptype_all, list) {
-		if (pt_prev)
-			ret = deliver_skb(skb, pt_prev, orig_dev);
-		pt_prev = ptype;
-	}
-
-skip_taps:
-#ifdef CONFIG_NET_INGRESS
-	if (static_key_false(&ingress_needed)) {
-		skb = handle_ing(skb, &pt_prev, &ret, orig_dev);
-		if (!skb)
-			goto out;
-
-		if (nf_ingress(skb, &pt_prev, &ret, orig_dev) < 0)
-			goto out;
-	}
-#endif
-#ifdef CONFIG_NET_CLS_ACT
-	skb->tc_verd = 0;
-ncls:
-#endif
-	if (pfmemalloc && !skb_pfmemalloc_protocol(skb))
-		goto drop;
-
-	if (skb_vlan_tag_present(skb)) {
-		if (pt_prev) {
-			ret = deliver_skb(skb, pt_prev, orig_dev);
-			pt_prev = NULL;
-		}
-		if (vlan_do_receive(&skb))
-			goto another_round;
-		else if (unlikely(!skb))
-			goto out;
-	}
-
-	rx_handler = rcu_dereference(skb->dev->rx_handler);
-	if (rx_handler) {
-		if (pt_prev) {
-			ret = deliver_skb(skb, pt_prev, orig_dev);
-			pt_prev = NULL;
-		}
-		switch (rx_handler(&skb)) {
-		case RX_HANDLER_CONSUMED:
-			ret = NET_RX_SUCCESS;
-			goto out;
-		case RX_HANDLER_ANOTHER:
-			goto another_round;
-		case RX_HANDLER_EXACT:
-			deliver_exact = true;
-		case RX_HANDLER_PASS:
-			break;
-		default:
-			BUG();
-		}
-	}
-
-	if (unlikely(skb_vlan_tag_present(skb))) {
-		if (skb_vlan_tag_get_id(skb))
-			skb->pkt_type = PACKET_OTHERHOST;
-		/* Note: we might in the future use prio bits
-		 * and set skb->priority like in vlan_do_receive()
-		 * For the time being, just ignore Priority Code Point
-		 */
-		skb->vlan_tci = 0;
-	}
-
-	type = skb->protocol;
-
-	/* deliver only exact match when indicated */
-	if (likely(!deliver_exact)) {
-		deliver_ptype_list_skb(skb, &pt_prev, orig_dev, type,
-				       &ptype_base[ntohs(type) &
-						   PTYPE_HASH_MASK]);
-	}
-
-	deliver_ptype_list_skb(skb, &pt_prev, orig_dev, type,
-			       &orig_dev->ptype_specific);
-
-	if (unlikely(skb->dev != orig_dev)) {
-		deliver_ptype_list_skb(skb, &pt_prev, orig_dev, type,
-				       &skb->dev->ptype_specific);
-	}
-
-	if (pt_prev) {
-		if (unlikely(skb_orphan_frags(skb, GFP_ATOMIC)))
-			goto drop;
-		else
-			ret = pt_prev->func(skb, skb->dev, pt_prev, orig_dev);
-	} else {
-drop:
-		atomic_long_inc(&skb->dev->rx_dropped);
-		kfree_skb(skb);
-		/* Jamal, now you will not able to escape explaining
-		 * me how you were going to use this. :-)
-		 */
-		ret = NET_RX_DROP;
-	}
-
-out:
-	return ret;
-}
-
-
-
-static int __netif_receive_skb(struct sk_buff *skb)
-{
-	int ret;
-
-	if (sk_memalloc_socks() && skb_pfmemalloc(skb)) {
-		unsigned long pflags = current->flags;
-
-		/*
-		 * PFMEMALLOC skbs are special, they should
-		 * - be delivered to SOCK_MEMALLOC sockets only
-		 * - stay away from userspace
-		 * - have bounded memory usage
-		 *
-		 * Use PF_MEMALLOC as this saves us from propagating the allocation
-		 * context down to all allocation sites.
-		 */
-		current->flags |= PF_MEMALLOC;
-		ret = __netif_receive_skb_core(skb, true);
-		tsk_restore_flags(current, pflags, PF_MEMALLOC);
-	} else
-		ret = __netif_receive_skb_core(skb, false);
-
-	return ret;
-}
-
-//#define net_timestamp_check(COND, SKB)			\
-//	if (static_key_false(&netstamp_needed)) {		\
-//		if ((COND) && !(SKB)->tstamp.tv64)	\
-//			__net_timestamp(SKB);		\
-//	}						\
-
-
-
-static int netif_receive_skb_internal(struct sk_buff *skb)
-{
-	int ret;
-
-	//	net_timestamp_check(netdev_tstamp_prequeue, skb);
-
-	if (skb_defer_rx_timestamp(skb))
-		return NET_RX_SUCCESS;
-
-	rcu_read_lock();
-
-#ifdef CONFIG_RPS
-	if (static_key_false(&rps_needed)) {
-		struct rps_dev_flow voidflow, *rflow = &voidflow;
-		int cpu = get_rps_cpu(skb->dev, skb, &rflow);
-
-		if (cpu >= 0) {
-			ret = enqueue_to_backlog(skb, cpu, &rflow->last_qtail);
-			rcu_read_unlock();
-			return ret;
-		}
-	}
-#endif
-	ret = __netif_receive_skb(skb);
-	rcu_read_unlock();
-	return ret;
-}
-
 int netif_receive_skb(struct sk_buff *skb)
 {
-	//trace_netif_receive_skb_entry(skb);
+	/* Should not be needed except for tracing
+	trace_netif_receive_skb_entry(skb);
+	*/
+  Cpsw * cpsw = (Cpsw*) skb->dev->dev.of_node;
+  if (cpsw->session0) cpsw->session0->receive(skb);
 
-	return netif_receive_skb_internal(skb);
+  dev_kfree_skb(skb);
+  return NET_RX_SUCCESS;
 }
 
 /* from core/net/dev.c */

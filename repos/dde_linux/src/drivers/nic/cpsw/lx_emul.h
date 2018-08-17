@@ -1860,112 +1860,12 @@ struct ptp_clock {
 // ALE
 void init_timer(struct timer_list *timer);
 
-// for net/core/dev.c:
-#define PTYPE_HASH_SIZE	(16)
-#define PTYPE_HASH_MASK	(PTYPE_HASH_SIZE - 1)
-#define NETDEV_HASHBITS    8
-#define NETDEV_HASHENTRIES (1 << NETDEV_HASHBITS)
-
-#define __this_cpu_inc(pcp)	//	__this_cpu_add(pcp, 1)
-
-#define VLAN_VID_MASK		0x0fff /* VLAN Identifier */
-#define skb_vlan_tag_get_id(__skb)	((__skb)->vlan_tci & VLAN_VID_MASK)
 
 /* Backlog congestion levels */
 enum {
 			NET_RX_SUCCESS	= 0,	/* keep 'em coming, baby */
       NET_RX_DROP =	1,	/* packet dropped */
 };
-
-#define DEFINE_RWLOCK(x) \
-  rwlock_t x = 0
-
-//DEFINE_RWLOCK(dev_base_lock);
-
-enum kobject_action {
-	KOBJ_ADD,
-	KOBJ_REMOVE,
-	KOBJ_CHANGE,
-	KOBJ_MOVE,
-	KOBJ_ONLINE,
-	KOBJ_OFFLINE,
-	KOBJ_MAX
-};
-
-enum
-{
-	HI_SOFTIRQ=0,
-	TIMER_SOFTIRQ,
-	NET_TX_SOFTIRQ,
-	NET_RX_SOFTIRQ,
-	BLOCK_SOFTIRQ,
-	BLOCK_IOPOLL_SOFTIRQ,
-	TASKLET_SOFTIRQ,
-	SCHED_SOFTIRQ,
-	HRTIMER_SOFTIRQ, /* Unused, but kept as tools rely on the
-			    numbering. Sigh! */
-	RCU_SOFTIRQ,    /* Preferable RCU should always be the last softirq */
-
-	NR_SOFTIRQS
-};
-
-typedef struct seqcount {
-	unsigned sequence;
-#ifdef CONFIG_DEBUG_LOCK_ALLOC
-	struct lockdep_map dep_map;
-#endif
-} seqcount_t;
-
-struct softnet_data {
-	struct list_head	poll_list;
-	struct sk_buff_head	process_queue;
-
-	/* stats */
-	unsigned int		processed;
-	unsigned int		time_squeeze;
-	unsigned int		cpu_collision;
-	unsigned int		received_rps;
-#ifdef CONFIG_RPS
-	struct softnet_data	*rps_ipi_list;
-#endif
-#ifdef CONFIG_NET_FLOW_LIMIT
-	struct sd_flow_limit __rcu *flow_limit;
-#endif
-	struct Qdisc		*output_queue;
-	struct Qdisc		**output_queue_tailp;
-	struct sk_buff		*completion_queue;
-
-#ifdef CONFIG_RPS
-	/* Elements below can be accessed between CPUs for RPS */
-	struct call_single_data	csd ____cacheline_aligned_in_smp;
-	struct softnet_data	*rps_ipi_next;
-	unsigned int		cpu;
-	unsigned int		input_queue_head;
-	unsigned int		input_queue_tail;
-#endif
-	unsigned int		dropped;
-	struct sk_buff_head	input_pkt_queue;
-	struct napi_struct	backlog;
-
-};
-
-struct packet_type {
-	__be16			type;	/* This is really htons(ether_type). */
-	struct net_device	*dev;	/* NULL is wildcarded here	     */
-	int			(*func) (struct sk_buff *,
-					 struct net_device *,
-					 struct packet_type *,
-					 struct net_device *);
-	bool			(*id_match)(struct packet_type *ptype,
-					    struct sock *sk);
-	void			*af_packet_priv;
-	struct list_head	list;
-};
-
-
-#define DEFINE_HASHTABLE(name, bits)						\
-	struct hlist_head name[1 << (bits)] =					\
-			{ [0 ... ((1 << (bits)) - 1)] = HLIST_HEAD_INIT }
 
 
 #include <lx_emul/extern_c_end.h>
